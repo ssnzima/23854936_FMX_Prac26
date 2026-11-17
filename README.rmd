@@ -40,7 +40,7 @@ list.files("Questions/Question1/code/", full.names = TRUE) %>%
 
 ## Part A: Has local volatility increased, and does it mirror the global experience?
 
-**Approach.** I first look at realised (historical) volatility for local and global indexes, then fit GARCH models to get conditional volatility, and finally ask *what drives* local volatility by relating it to offshore uncertainty measures (implied vol, policy uncertainty, bond and oil volatility) and to local currency volatility.
+**Approach.** No single measure can show both whether local volatility has increased and whether it mirrors the global experience, so I build the evidence in layers. I start with realised volatility, which is model-free and shows how local and global markets have actually moved. I then fit GARCH models to capture what realised volatility misses: how long volatility shocks persist and whether bad news raises volatility more than good news. Finally, because the seminar's claim is about *causes*, I relate local volatility to offshore uncertainty measures and to rand volatility to separate imported from home-grown risk. Throughout, I prefer simple methods backed by robustness checks, so that each conclusion rests on more than one piece of evidence.
 
 ### Data
 
@@ -185,6 +185,252 @@ Local volatility has not moved to a permanently higher level since 2020, but vol
 
 
 **Limitations.** The regressions show associations, not causal effects. Monthly volatility measures are persistent, so the residuals are likely autocorrelated and the OLS standard errors understated; the strong t-statistics on the VIX and oil remain convincing, but the borderline terms (EPU, MOVE) should be read with caution. Finally, local volatility is measured in rand and global volatility in US dollars, so part of any gap between them reflects the currency rather than the equity market itself.
+
+## Part B: Does SafeCore navigate volatility effectively?
+
+**Approach.** SafeCore is built without any explicit view on volatility, so the question is whether it nonetheless behaves like a risk ballast, and if not, why. I first establish *whether* there is a problem, by looking at how the fund behaves when markets fall (not just its average volatility), using a rebuilt Low Vol index as a reference for what a true ballast looks like. Afterwhich, I find *where* its volatility comes from, since a stock's share of risk can differ greatly from its weight. Finally, I build my own momentum and low-volatility scores and combine them with the third party's into portfolio-level factor exposures, to explain *why* the fund behaves as it does. The Capped SWIX (J433) is the benchmark throughout.
+
+### Data and portfolio construction
+
+```{r Q1B-data}
+Stock_Rets    <- read_rds("data/Stock_Returns_Daily.rds")
+Index_Const   <- read_rds("data/Index_Constituents.rds")
+SafeCore      <- read_rds("data/SafeCore.rds")
+Factor_Scores <- read_rds("data/Factor_Scores.rds")
+Hedge_Plays   <- read_rds("data/Currency_Hedge_Plays.rds")
+STeFI         <- read_rds("data/STeFI_Index.rds")
+
+SC_Holdings <- Q1B_SafeCore_Holdings(SafeCore, Index_Const)
+```
+
+Data checks prior construction:
+
+* SafeCore's holdings go back to 2007, but stock returns only start in 2015, so the analysis runs from 2015.
+* Holdings weights sum to 79-100% each month, which are rescaled to 100%. In every month at least 94.7% of the fund's weight has matching stock returns, so the rescaling only affects a few small holdings.
+* A few holdings have no sector (e.g. Valterra Platinum, Pan African Resources). I fill these from the super-sector in the index constituent file rather than leaving them as "Other", which would cloud resource risk.
+* The stock return file contains some extreme daily moves (above 50%) in illiquid small caps. These matter for the factor scores, which is why those are capped (see below).
+
+SafeCore's daily returns are built with `rmsfuns::Safe_Return.portfolio`: month-end weights are applied from the next trading day (`lag_weights = TRUE`) and then drift with prices until the next rebalance.
+
+```{r Q1B-portfolios}
+SafeCore_Rets <- Build_Portfolio(SC_Holdings, Stock_Rets, PortName = "SafeCore")
+LowVol_Rets   <- Q1B_LowVol_Rebuild(Index_Const, Stock_Rets)        # quarterly rebalance
+LowVol_Daily  <- Q1B_LowVol_Daily(Index_Const)                      # daily weights (check only)
+
+B_Panel <- Q1B_Return_Panel(SafeCore_Rets, LowVol_Rets, Idx_Daily)
+```
+
+The Low Vol index (STXLVLJ433) only has returns from 2024, but its constituents and weights are available from August 2020. I rebuild it with weights reset at the end of March, June, September and December. Before relying on the rebuild for 2020-2023, I check it against the actual index where the two overlap:
+
+```{r Q1B-lowvol-check}
+Plot_LowVol_Check(LowVol_Rets, LowVol_Daily, Idx_Daily)
+```
+
+**Interpretation:** Over 2024-2026 the quarterly rebuild has a daily correlation of 0.995 with the actual index and a tracking error of 1.4% a year, ending about 2.7% below it after almost three years. Using the daily (already drifted) weights in the file tracks even more closely (correlation 0.999, tracking error 0.7%), because it picks up index changes between quarterly rebalances. Either way the rebuild is accurate enough to extend the Low Vol index back to 2020 as a 'risk ballast' benchmark.
+
+### 1. Did SafeCore navigate volatility?
+
+The scorecard summarises risk and return. I report it over the full period, and over the period since September 2020 when the Low Vol index is also available, so that every fund is judged on the same window. The Sharpe ratio uses STeFI (the local cash index) as the risk-free rate.
+
+```{r Q1B-scorecard}
+Q1B_Scorecard(B_Panel %>% filter(Name != "Low Vol"), STeFI, as.Date("2015-01-01"), as.Date("2026-09-30")) %>%
+    knitr::kable(digits = 3)
+
+Q1B_Scorecard(B_Panel, STeFI, as.Date("2020-09-01"), as.Date("2026-09-30")) %>%
+    knitr::kable(digits = 3)
+```
+
+**Interpretation:** SafeCore has been a good fund in return terms: since 2015 it returned 11.4% a year against 8.7% for the Capped SWIX, with an information ratio of about 0.5 and a Sharpe ratio more than double the benchmark's. But it has not reduced risk: its volatility (17.9%) is the same as the benchmark's (17.8%), its beta is close to 1, and its maximum drawdown (-39%) is only slightly smaller. Since 2020 its drawdown was actually *deeper* than the benchmark's (-18.5% vs -14.1%). The rebuilt Low Vol index did what it is designed to do on volatility (15.1% vs 16.4%, beta 0.88), but at a large cost in return over this strong market period, and without a smaller drawdown.
+
+```{r Q1B-growth, fig.height = 7}
+B_GDD <- Q1B_Growth_DD(B_Panel)
+Plot_Growth_DD(B_GDD)
+```
+
+```{r Q1B-volratio}
+Plot_Vol_Ratio(Q1B_Vol_Ratio(B_Panel))
+```
+
+**Interpretation:** The growth chart shows where SafeCore's outperformance came from: it pulled ahead of the benchmark in 2016-2018 and again from 2020, and since 2020 it has tracked the Top 40 very closely. The drawdown panel shows that in every major sell-off SafeCore fell about as far as the market. The volatility ratio makes the point directly: SafeCore was less volatile than the Capped SWIX in only about a quarter of rolling one-year windows (mostly 2015-2016 and 2020), and has been slightly more volatile since 2021. The rebuilt Low Vol index, by contrast, was smoother than the benchmark in every window, typically by about 8%.
+
+To look at how each fund participates in market moves, I compute upside and downside capture per calendar year: the fund's average return on days the benchmark rose (fell), divided by the benchmark's average return on those days. A good ballast captures less of the downside than of the upside, which puts it above the dashed 45-degree line.
+
+```{r Q1B-capture, fig.height = 6.5}
+Plot_Capture(Q1B_Capture(B_Panel))
+```
+
+**Interpretation:** SafeCore's points cluster tightly around (1, 1): in most years it simply moves with the market, capturing roughly all of the upside and all of the downside. Its best years (2016, 2017) sit in the ideal quadrant, but 2019 and 2024 sit in the worst one. The Low Vol index sits in the bottom-left: it captures only about 80-88% of both up and down moves. That is the signature of a genuine low-beta strategy: it reduces both sides symmetrically, rather than offering "free" downside protection.
+
+Next, stress tests: the cumulative return in each Part A event window and in the five highest-VIX months that are not already inside an event (so the same crisis is not counted twice).
+
+```{r Q1B-stress, fig.height = 5.5}
+Stress_Windows <- Q1B_Stress_Windows(Q1_Events, Implied_Vol, N_VIX = 5)
+Plot_Stress(Q1B_Stress_Returns(B_Panel, Stress_Windows))
+```
+
+Finally, performance by volatility regime: each month is classified by its average VIX into calm, normal and stressed terciles, and I compare each fund's return with the benchmark's.
+
+```{r Q1B-regimes}
+Plot_VIX_Regimes(Q1B_VIX_Regimes(B_Panel, Implied_Vol))
+```
+
+**Interpretation:** SafeCore did better than the benchmark in 7 of the 10 stress episodes, but usually by less than 1.5 percentage points, and it did worse in the most relevant one for the seminar's argument: the 2022 Ukraine war and oil shock (-10.2% vs -8.0%). Its excess return is positive in all three VIX regimes (about +0.2% a month), and it beats the benchmark in only about half of stressed months. In other words, SafeCore's edge is a steady stock-selection edge that does not come from protection in turbulent markets. Interestingly, the Low Vol index underperformed the benchmark in normal and stressed months since 2020, a reminder that lower volatility does not guarantee better returns in every stressed month.
+
+### 2. Where does SafeCore's volatility come from?
+
+At each month-end I decompose the fund's variance into each stock's contribution: with weights $w$ and covariance matrix $\Sigma$, stock $i$ contributes $w_i (\Sigma w)_i / w'\Sigma w$, and the contributions sum to 100%. Unlike the weight, this accounts for how volatile each stock is *and* how it co-moves with the rest of the fund. The covariance matrix uses the past year of daily returns and is shrunk towards a structured target (Ledoit-Wolf, as in Practical 3): with about 40 stocks and 252 observations the sample covariance matrix is noisy, and shrinkage makes the contributions more stable.
+
+```{r Q1B-riskcontrib}
+Risk_Contrib <- Q1B_Risk_Contrib(SC_Holdings, Stock_Rets)
+
+Plot_Sector_Risk(Risk_Contrib)
+Plot_Weight_vs_Risk(Risk_Contrib, TopN = 10)
+```
+
+**Interpretation:** Resources are by far the main source of SafeCore's risk, and this has become more prevalent recently. In August 2026 resources made up 40% of the fund's weight but 68% of its risk. Two gold miners, AngloGold Ashanti (12% weight, 28% of risk) and Gold Fields (8% weight, 17% of risk), account for almost half of the fund's volatility, and Valterra Platinum adds another 10%. Banks and industrials (Standard Bank, Absa, FirstRand, MTN, Naspers) contribute less risk than their weight: they act as diversifiers within the fund. The fund's estimated volatility (from the covariance matrix) is about 20% a year, above its long-run average of about 18%.
+
+Two structural features can amplify this: concentration and currency exposure. Concentration is measured by the effective number of stocks, $1/\sum w_i^2$ (equal to $N$ for an equally weighted portfolio). For the currency profile I use the third party's rand-hedge classification, which is only available at the latest date, so this is a snapshot.
+
+```{r Q1B-conc-hedge, fig.height = 4.5}
+Plot_Conc_Hedge(Q1B_Effective_N(SC_Holdings, Index_Const),
+                Q1B_Hedge_Profile(SC_Holdings, Index_Const, Hedge_Plays))
+```
+
+**Interpretation:** SafeCore behaves like a portfolio of about 17-22 equally weighted stocks, roughly half the effective breadth of the Capped SWIX (about 30-40), and its concentration has increased in 2026. Fewer effective bets means that a few stocks (here, the gold miners) can dominate its risk. On currency, SafeCore holds fewer pure rand hedges (22% vs 27%) and rand-neutral stocks (11% vs 19%) than the benchmark, and more rand plays (29% vs 18%). The gold miners fall under rand leverage. So the fund combines domestic stocks that suffer when the rand weakens with miners that are highly sensitive to the currency and commodity prices: not a profile that cushions a global risk-off shock, which in Part A was the main source of local volatility.
+
+### 3. Factor exposures
+
+**Own scores.** At each month-end, for the stocks the third party scores that month:
+
+* **Momentum** = the stock's return from 6 months ago to 1 month ago. The most recent month is skipped because very short-term returns tend to reverse, which would add noise to a trend-following signal.
+* **Low volatility** = minus the annualised volatility of daily returns over the past 6 months, so that a high score means a low-volatility stock, matching the vendor's convention that higher = more of the factor.
+
+Both are converted to cross-sectional z-scores each month and capped at ±3, so that a few illiquid stocks with extreme moves cannot dominate. Stocks need a full 6-month history to be scored.
+
+```{r Q1B-own-scores}
+Own_Scores <- Q1B_Own_Scores(Stock_Rets, Factor_Scores)
+Score_Agree <- Q1B_Score_Agreement(Own_Scores, Factor_Scores)
+
+Plot_Score_Compare(Score_Agree, Own_Scores, Factor_Scores, SC_Holdings)
+```
+
+**Interpretation:** These momentum score agree well with the vendor's: the monthly rank correlation averages about 0.6. The largest disagreements among SafeCore's holdings are the gold and platinum miners (Pan African, AngloGold, Valterra, Gold Fields), which the vendor still scores as high-momentum while our 6-month measure does not, which suggests the vendor uses a longer look-back that still captures their earlier rally. Our low-volatility score, however, is essentially unrelated to the vendor's "Volatility Sensitivity" (average rank correlation of about 0.1, sometimes negative). Further checks show that the vendor score is also barely related to realised volatility (-0.18) or to market beta (-0.08), so it measures something different, most likely how sensitive a stock is to *changes* in market volatility rather than how volatile it is. For the question at hand ("is SafeCore a low-volatility fund?") our own price-based score is the more direct measure, and the vendor's should not be read as a low-vol score.
+
+**Portfolio exposures.** I combine the stock scores into portfolio-level (composite) scores: the weighted average score of each portfolio's holdings, for SafeCore, the Capped SWIX and the four factor indexes. One finding shaped how I present these: the Capped SWIX scores almost exactly zero on every vendor factor, which means the vendor's scores are benchmark-relative, while ours are standardised across all stocks. To put both on the same footing, I express every exposure relative to the Capped SWIX ("active" exposure). This also answers the more useful question for a manager: how does the fund differ from its benchmark?
+
+```{r Q1B-exposures}
+All_Scores  <- Q1B_All_Scores(Own_Scores, Factor_Scores)
+Exposures   <- Q1B_Port_Exposures(All_Scores, SC_Holdings, Index_Const)
+Active_Exp  <- Q1B_Active_Exposures(Exposures)
+
+Plot_Fingerprint(Active_Exp, Months = 12)
+```
+
+```{r Q1B-drift, fig.height = 5}
+Plot_Factor_Drift(Active_Exp)
+```
+
+**Interpretation:** The factor indexes behave as expected (the Momentum index scores highest on momentum, Value on value, Low Vol on low volatility), which confirms the scores are sensible. Against these reference points, SafeCore's fingerprint over the last year is clear: it is tilted towards **momentum** (+0.21) and **earnings quality** (+0.20), with a mild **value** tilt (+0.10), and it has no low-volatility tilt (-0.06 on our score, against +0.33 for the Low Vol index). It looks like a quality-momentum fund, not a defensive one. The drift chart adds the timing: SafeCore's momentum exposure rose sharply in 2026 while its low-volatility exposure turned negative. This connects the pieces: by following momentum, the fund has drifted into the gold miners, which is exactly why resources now dominate its risk.
+
+### Part B conclusion
+
+SafeCore has been a good fund, but it has not been a risk ballast. It outperformed the Capped SWIX by close to 3% a year since 2015, yet with the same volatility, a beta close to one, near-full participation in market falls, and no consistent advantage in stressed periods; it did worse than the benchmark in the 2022 oil shock. Its volatility is concentrated: two gold miners carry almost half of its risk, resources about two thirds, and its effective number of stocks is about half the benchmark's. Its style explains why: SafeCore is a quality-momentum fund whose momentum tilt has recently pulled it into volatile resource stocks, while it holds fewer rand hedges and rand-neutral stocks than its benchmark. If the team wants SafeCore to provide some protection in the global risk-off episodes initially identified, practical options are to cap the risk contribution of single stocks and sectors (not only their weights), to monitor the momentum tilt for crowding into one theme, and to add an explicit low-volatility tilt or sleeve, accepting, as the rebuilt Low Vol index shows, that this costs some upside in strong markets.
+
+
+## Part C: Alpha opportunity in the local market since 2020
+
+**Approach.** Active managers often add value when stocks behave differently from one another, so I measure the alpha opportunity from two complementary angles: dispersion (how far apart stock returns are on a given day) and correlation (how much stocks move together over time). High dispersion with low correlation is a stock-picker's market; low dispersion with high correlation is a macro-driven one where stock selection matters little. I combine the two into a single Alpha Opportunity Index, check that it lines up with the returns a 'good' stock picker could actually have earned, and then relate it to the global macro measures from Part A. Constituent data starts in August 2020.
+
+### Dispersion (cross-sectional volatility)
+
+Each day I compute the cross-sectional volatility (CSV) of the Capped SWIX constituents, both weighted and unweighted:
+
+$$CSV^{W}_t = \sqrt{\sum_i w_{i,t-1} (R_{i,t} - \bar{R}_t)^2}, \qquad \bar{R}_t = \sum_i w_{i,t-1} R_{i,t}$$
+
+The weights are the previous day's index weights (so there is no look-ahead) and $\bar{R}_t$ is then the index return itself. The weighted version is used as the main measure for two reasons. First, it measures the opportunity that matters to a manager benchmarked against the Capped SWIX: a large move in a stock with a tiny index weight changes little for such a fund. Second, the unweighted measure is dominated by small, illiquid stocks with erratic prices, which inflate dispersion without creating opportunity that can actually be captured.The unweighted version as included as a robustness check.
+
+**Data cleaning.** Two daily "returns" above 100% are corporate-action artefacts rather than price moves: Richemont's shareholder warrants (CFRO) show +369,900% when they listed in November 2020, and Fortress B shows +106% around its A/B share restructure in February 2024. Even with a tiny index weight, the warrant print alone lifted November 2020's weighted dispersion to about 6%, and the unweighted average for 2020 to several hundred percent. These two rows are dropped. It is also a good example of how fragile unweighted dispersion is.
+
+```{r Q1C-csv}
+Const_J433  <- Q1C_Constituents(Index_Const, IndexName = "Capped SWIX")
+Daily_CSV   <- Q1C_Daily_CSV(Const_J433)
+Monthly_CSV <- Q1C_Monthly_CSV(Daily_CSV)        # daily CSV is noisy, so I average per month
+
+Plot_CSV(Monthly_CSV)
+```
+
+**Interpretation:** Dispersion was high in late 2020 (an average daily CSV of about 2.3%, as markets recovered unevenly from COVID), fell steadily to a low of about 1.6% in 2024, and has risen again to about 2.0% in 2026. The unweighted measure is consistently higher (small caps are noisier), and the two are correlated at 0.74, so the choice of measure does not change the overall pattern.
+
+Because the weighted variance is a weighted sum of squared deviations, it can be split exactly into a part within super-sectors (stocks moving differently from their own sector: the stock-picking opportunity) and a part between super-sectors (sectors moving differently from each other: the sector-allocation opportunity).
+
+```{r Q1C-decomp}
+Plot_CSV_Decomp(Monthly_CSV)
+```
+
+**Interpretation:** Until 2024 about 80% of dispersion came from within sectors, so the alpha opportunity was mostly about picking stocks. Since 2025 the between-sector share has risen sharply (the within share averages 71% in 2025 and 65% in 2026, falling to around 50% in some months). This is the resources story from Part B seen from the market's side: resources (gold miners in particular) have moved very differently from financials and industrials, so getting the sector call right has become as important as picking stocks within sectors.
+
+### Rolling inter-constituent correlation
+
+At each month-end I compute the correlation matrix of the Large Cap stocks over the previous 63 trading days, and keep all pairwise correlations. Rather than collapsing them into one average, I show their distribution (the median pair and the middle 50% of pairs), because this shows whether *all* stocks were moving together or only some. I use the Large Caps (about 40 stocks) because they have reliable daily prices and are where most institutional money sits.
+
+```{r Q1C-paircor}
+Pair_Cor <- Q1C_Roll_PairCor(Index_Const, IndexName = "Large Caps", Window = 63)
+Plot_PairCor(Pair_Cor)
+```
+
+**Interpretation:** The median pairwise correlation peaked in 2022 (around 0.30, the year of the Ukraine war and aggressive rate hikes), when even the middle 50% band moved up: almost all stocks were being driven by the same macro forces. Correlations then fell to their lowest levels in 2024-2025 (around 0.18-0.19) before picking up again in 2026. Low correlations in 2024-2025 mean stocks were trading more on their own fundamentals.
+
+### Alpha opportunity: combining dispersion and correlation
+
+Dispersion and correlation are only weakly related in this sample (correlation of 0.17), so they capture different aspects of the opportunity and are worth combining. Plotting them against each other gives a map of market regimes, and the Alpha Opportunity Index summarises it in one number: $z(\text{dispersion}) - z(\text{correlation})$, where $z$ standardises each over the sample. A value of 0 is an average month, and the units are standard deviations.
+
+```{r Q1C-opportunity, fig.height = 6}
+Opportunity <- Q1C_Opportunity(Monthly_CSV, Pair_Cor)
+
+Plot_Opp_Quadrant(Opportunity)
+Plot_Opp_Index(Opportunity)
+```
+
+**Interpretation:** The map shows clear clusters by year. 2022 sits in the high-correlation half (macro-driven), 2023-2024 in the low-dispersion half, and many 2025-2026 months in the bottom-right "stock-picker's" quadrant. The best months for stock pickers were March 2022, November 2020, September-October 2025 and February 2026; the worst were August 2022, July 2023 and January 2024, when stocks moved together and little apart. Overall, the alpha opportunity was weak from mid-2022 to 2024 and has improved markedly since 2025.
+
+### Was the opportunity actually realised?
+
+An index like this is only useful if it lines up with returns that a manager could have earned. I use two "payoff" measures from the data: the monthly return of the best 20% of Capped SWIX stocks minus the worst 20% (the reward for picking the right stocks), and the gap between the best and worst of the Value, Momentum, Quality and Low Vol indexes (the reward for picking the right style).
+
+```{r Q1C-realised, fig.height = 4}
+Realised <- Q1C_Realised_Spreads(Index_Const)
+Plot_Realised(Opportunity, Realised)
+```
+
+**Interpretation:** In months where the index signalled high opportunity, the gap between the best and worst stock quintiles averaged 26% a month, compared to 22% in low-opportunity months (correlation between the index and the spread: 0.51). The gap between factor indexes is much smaller and only weakly related to the index (2.8% vs 2.2%). So the index captures a real stock-selection opportunity: when it is high, the payoff to picking the right stocks is larger. It says less about style timing.
+
+### Alpha opportunity and global macro factors
+
+I relate monthly dispersion, correlation and the Alpha Opportunity Index to the global macro measures used in Part A. Two views: the correlation in the same month and in the next month (does macro stress lead the opportunity?), and the average dispersion and correlation when each macro measure is in its lowest vs highest third of months.
+
+```{r Q1C-macro, fig.height = 4.5}
+Macro_Vars  <- c("VIX", "VXEEM", "Oil Vol", "MOVE (US bond vol)", "EPU Global", "JPM Global FX vol", "SAVI USDZAR vol")
+Macro_Panel <- Q1C_Macro_Panel(Unc_Levels, Opportunity, Monthly_CSV, Pair_Cor, Vars = Macro_Vars)
+
+Plot_LeadLag(Q1C_LeadLag(Macro_Panel, Macro_Vars))
+Plot_Macro_Regimes(Q1C_Macro_Regimes(Macro_Panel, Macro_Vars))
+```
+
+**Interpretation:** Three findings stand out.
+
+1. **Equity fear raises dispersion and correlation, so its net effect is small.** In months with high VIX, dispersion is about 20% higher (2.1% vs 1.7%) but the average correlation is also higher (0.27 vs 0.21), and the VIX predicts even higher correlation the following month. Stock prices spread out, but they are also increasingly driven by the same risk-on/risk-off swings, so the opportunity index barely moves with the VIX.
+2. **Bond and currency volatility are what hurt stock pickers.** High US bond volatility (MOVE) goes with lower dispersion and higher correlation, and it has the most negative relationship with the opportunity index (-0.44 in the same month, -0.51 the next). Global FX volatility and rand volatility show the same pattern. When interest rates and currencies are moving sharply, they drive all stocks together, which is exactly what happened in 2022.
+3. **These macro measures lead the opportunity.** The correlations with next month's opportunity are stronger than with this month's for MOVE, FX volatility, rand volatility and oil volatility. Rising rates and currency volatility are therefore an early warning that the market is about to become less rewarding for stock selection. Policy uncertainty (EPU) again shows almost no relationship, consistent with Part A.
+
+### Part C conclusion
+
+The alpha opportunity on the local market was strong in late 2020, weak from mid-2022 through 2024 when correlations were high and dispersion low, and has improved markedly since 2025, with several months in the "stock-picker's market" quadrant. The opportunity is real, in the sense that the payoff to picking the right stocks has been larger when the index is high. Two caveats matter for how it can be used. First, a growing share of recent dispersion comes from sectors moving apart (mainly resources), so sector allocation has become as important as stock picking. Second, the macro environment matters through rates and currencies rather than through equity fear: rising bond and FX volatility have tended to precede a more correlated, less rewarding market.
+
+**Limitations.** With about six years of monthly data (71 observations), the macro relationships are correlations, not causal effects, and they are sensitive to a few episodes (2022 in particular). The quintile spread is a foresight measure: it shows how much there was to gain, not what any manager actually earned.
+
+# Question 1: Overall conclusion
+
+Taken together, the three parts give a consistent picture. Local volatility has not risen to a permanently higher level, but volatility episodes have become more frequent and are largely imported, through global risk-off shocks and oil price volatility (Part A). SafeCore has added return but has not protected investors in those episodes: its risk is concentrated in a few resource stocks, and its quality-momentum style has no low-volatility tilt (Part B). Meanwhile, the opportunity to add value through stock selection has improved since 2025, but more of it now comes from sector moves, and rising bond and currency volatility have tended to signal tougher conditions for stock pickers (Part C). The implication for the team is that SafeCore can keep its stock-selection edge while building in a risk ballast that targets the shocks that actually drive local volatility: limiting single-stock and sector risk, adding a low-volatility tilt, and monitoring global rates and currency volatility as early warnings.
 
 
 

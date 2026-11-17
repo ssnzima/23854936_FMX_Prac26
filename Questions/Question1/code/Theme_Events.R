@@ -6,7 +6,11 @@
 # global series = warm colours / greys, so local vs global is easy to spot.
 Pal <- c("Capped SWIX"   = "#1F3A5F", "Top 40"     = "#5FA8D3", "Mid Caps"   = "#8E6C8A",
          "Small Caps"    = "#8AB17D", "MSCI ACWI"  = "#E76F51", "MSCI EM"    = "#F4A261",
-         "S&P 500"       = "#6C7A89", "Euro Stoxx 50" = "#2A9D8F", "Nikkei 225" = "#C9A227")
+         "S&P 500"       = "#6C7A89", "Euro Stoxx 50" = "#2A9D8F", "Nikkei 225" = "#C9A227",
+         # Part B: SafeCore is the "hero" series, so it gets the most vivid colour
+         "SafeCore"      = "#E0245E", "Low Vol"    = "#2A9D8F", "Value"      = "#C9A227",
+         "Momentum"      = "#8E6C8A", "Quality"    = "#6C7A89",
+         "Low Vol (actual)" = "#1F3A5F", "Low Vol (daily weights)" = "#F4A261")
 
 # --- Theme ------------------------------------------------------------------------
 theme_sleek <- function(base_size = 11) {
@@ -66,12 +70,13 @@ Events_Caption <- function(Events = Q1_Events, MinDate = as.Date("1900-01-01")) 
 # MinDate: drop events that end before the plotted data starts.
 # Labels = TRUE adds a small number on top of each band (kept as an option, off by default);
 # FacetVar / FacetValue / FacetLevels then print those numbers in one facet panel only.
+# YMin / YMax: band height - leave at -Inf/Inf, except on log scales (use positive limits).
 geom_events <- function(Events = Q1_Events, Labels = FALSE, MinDate = as.Date("1900-01-01"),
-                        FacetVar = NULL, FacetValue = NULL, FacetLevels = NULL) {
+                        FacetVar = NULL, FacetValue = NULL, FacetLevels = NULL, YMin = -Inf, YMax = Inf) {
 
     Ev <- Events %>% filter(End >= MinDate) %>% mutate(Start = pmax(Start, MinDate))
 
-    Bands <- annotate("rect", xmin = Ev$Start, xmax = Ev$End, ymin = -Inf, ymax = Inf,
+    Bands <- annotate("rect", xmin = Ev$Start, xmax = Ev$End, ymin = YMin, ymax = YMax,
                       fill = "grey55", alpha = 0.16)
     if (!Labels) return(list(Bands))
 
