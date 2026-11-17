@@ -1,0 +1,30 @@
+---
+output:
+  md_document:
+    variant: markdown_github
+---
+
+# Financial Econometrics Practical Exam 2026
+
+**Student number:** 23854936
+
+This is the main document for the financial econometrics practical: it contains and describes all code used in each question. 
+
+```{r setup, include = FALSE}
+rm(list = ls())
+gc()
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.width = 8, fig.height = 5)
+library(tidyverse)
+list.files("code/", full.names = TRUE, recursive = TRUE) %>% .[grepl("[.]R$", .)] %>% as.list() %>% walk(~source(.))
+```
+
+# Setup
+
+```{r, eval = FALSE}
+for (q in paste0("Question", 1:4)) {
+  Texevier::create_template(directory = "Questions", template_name = q, open_project = FALSE)
+}
+```
+
+
+

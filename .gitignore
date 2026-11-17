@@ -1,0 +1,12 @@
+# Exam rule: never commit any data folder
+data/
+data*/
+# RStudio clutter
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+.Rproj.user
+.httr-oauth
+.DS_Store
+.quarto
