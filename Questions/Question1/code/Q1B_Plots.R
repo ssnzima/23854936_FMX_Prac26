@@ -56,23 +56,27 @@ Plot_Growth_DD <- function(GDD) {
     cowplot::plot_grid(g1, g2, ncol = 1, rel_heights = c(1.25, 1), align = "v", axis = "lr")
 }
 
-# --- 2) Rolling vol ratio vs benchmark -------------------------------------------------
-Plot_Vol_Ratio <- function(VR) {
+# --- Rolling vol vs the benchmark: two lines with the gap between them filled ---------
+# (idea from the R Graph Gallery: "line chart with filled intersection")
+Plot_Vol_Ratio <- function(VR, Names = c("SafeCore", "Low Vol")) {
 
-    VR %>%
-        ggplot(aes(date, Ratio, colour = Name)) +
-        geom_events(MinDate = min(VR$date)) +
-        annotate("rect", xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = 1, fill = "#2A9D8F", alpha = 0.06) +
-        geom_hline(yintercept = 1, colour = "grey40", linewidth = 0.4) +
-        geom_line(linewidth = 0.6) +
-        annotate("text", x = as.Date("2021-09-01"), y = min(VR$Ratio), label = "Smoother than the Capped SWIX",
-                 hjust = 0, vjust = 0, size = 3, colour = "#2A9D8F", fontface = "italic") +
-        scale_colour_manual(values = Pal) +
-        scale_x_years() +
-        labs(title = "SafeCore is rarely smoother than its benchmark",
-             subtitle = "Rolling 1-year volatility divided by Capped SWIX volatility (below 1 = less volatile)",
-             caption = Events_Caption(MinDate = min(VR$date)), x = NULL, y = NULL) +
-        theme_sleek()
+    D <- VR %>%
+        filter(Name %in% Names) %>%
+        mutate(Fund = RollVol * sqrt(252), Bench = BenchVol * sqrt(252),
+               Name = factor(Name, levels = Names, labels = paste(Names, "vs Capped SWIX")))
+
+    ggplot(D, aes(date)) +
+        geom_ribbon(aes(ymin = Bench, ymax = pmax(Fund, Bench), fill = "More volatile than the benchmark"), alpha = 0.45) +
+        geom_ribbon(aes(ymin = pmin(Fund, Bench), ymax = Bench, fill = "Less volatile than the benchmark"), alpha = 0.45) +
+        geom_line(aes(y = Bench, colour = "Capped SWIX"), linewidth = 0.45) +
+        geom_line(aes(y = Fund, colour = "Fund"), linewidth = 0.6) +
+        facet_wrap(~Name, ncol = 1) +
+        scale_fill_manual(values = c("More volatile than the benchmark" = "#E0245E", "Less volatile than the benchmark" = "#2A9D8F")) +
+        scale_colour_manual(values = c("Capped SWIX" = "grey30", "Fund" = "#1F3A5F")) +
+        scale_x_years() + scale_y_pct() +
+        labs(title = "SafeCore is rarely smoother than its benchmark; Low Vol always is",
+             subtitle = "Rolling 1-year volatility, annualised", x = NULL, y = NULL) +
+        theme_sleek() + guides(colour = guide_legend(order = 1), fill = guide_legend(order = 2))
 }
 
 # --- 3) Capture "quadrant" scatter ---------------------------------------------------
@@ -226,8 +230,8 @@ Plot_Score_Compare <- function(Agree, Own, Factor_Scores, SC_Holdings) {
         scale_colour_manual(values = c("#E0245E", "#2A9D8F")) +
         scale_x_years(Breaks = "1 year") +
         scale_y_continuous(limits = c(-0.5, 1)) +
-        labs(title = "Our momentum score agrees with the vendor; our low-vol score does not",
-             subtitle = "Monthly rank (Spearman) correlation between our scores and the vendor's",
+        labs(title = "The own momentum score agrees with the vendor; the own low-vol score does not",
+             subtitle = "Monthly rank (Spearman) correlation between the own scores and the vendor's",
              x = NULL, y = NULL) +
         theme_sleek() + guides(colour = guide_legend(nrow = 2))
 
@@ -259,26 +263,57 @@ Plot_Score_Compare <- function(Agree, Own, Factor_Scores, SC_Holdings) {
     cowplot::plot_grid(g1, g2, ncol = 1, rel_heights = c(1, 1.15))
 }
 
-# --- 10) Factor fingerprint: active exposures, last 12 months -------------------------
+# --- Factor fingerprint: one radar per portfolio, SafeCore's shape overlaid -----------
+# (idea from the R Graph Gallery: "radar chart" + "small multiples")
 Plot_Fingerprint <- function(AE, Months = 12) {
 
-    D <- AE %>%
-        filter(date > max(date) %m-% months(Months)) %>%
-        group_by(Name, Factor) %>% summarise(Active = mean(Active), .groups = "drop") %>%
-        mutate(Factor = fct_reorder(Factor, Active * (Name == "SafeCore"), .fun = sum),
-               Size = ifelse(Name == "SafeCore", 4.2, 2.8))
+    FLvls <- c("Momentum", "Momentum (own)", "Growth", "Value", "Earnings Quality", "Low Vol (own)", "Volatility Sensitivity")
+    FLabs <- c("Momentum", "Momentum\n(own)", "Growth", "Value", "Quality", "Low vol\n(own)", "Vol.\nsensitivity")
+    PLvls <- c("SafeCore", "Momentum", "Quality", "Value", "Low Vol")
 
-    D %>%
-        ggplot(aes(Active, Factor, colour = Name)) +
-        geom_vline(xintercept = 0, colour = "grey40", linewidth = 0.4) +
-        geom_point(aes(size = Size), alpha = 0.9) +
-        scale_size_identity() +
-        scale_colour_manual(values = Pal) +
+    D <- AE %>%
+        filter(date > max(date) %m-% months(Months), Factor %in% FLvls, Name %in% PLvls) %>%
+        group_by(Name, Factor) %>% summarise(Active = mean(Active, na.rm = TRUE), .groups = "drop")
+
+    # Polar -> cartesian by hand, so the polygons have straight edges
+    Lim   <- ceiling(max(abs(D$Active)) * 10) / 10            # radial axis runs from -Lim (centre) to +Lim
+    K     <- length(FLvls)
+    Ang   <- tibble(Factor = FLvls, Lab = FLabs, Theta = 2 * pi * (seq_len(K) - 1) / K)
+    XY    <- function(Val, Theta) tibble(x = (Val + Lim) * sin(Theta), y = (Val + Lim) * cos(Theta))
+
+    Poly <- D %>% inner_join(Ang, by = "Factor") %>% arrange(Name, Theta) %>%
+        bind_cols(XY(.$Active, .$Theta)) %>%
+        mutate(Name = factor(Name, levels = PLvls))
+    SC <- Poly %>% filter(Name == "SafeCore") %>% select(-Name)      # SafeCore's outline, repeated in every panel
+
+    Rings <- expand_grid(Val = c(-Lim, -Lim / 2, 0, Lim / 2, Lim), Theta = c(Ang$Theta, 0)) %>%
+        bind_cols(XY(.$Val, .$Theta))
+    Spokes <- Ang %>% bind_cols(XY(Lim, .$Theta))
+    Labs   <- Ang %>% bind_cols(XY(Lim * 1.42, .$Theta))
+    RingLab <- tibble(Val = c(-Lim, 0, Lim)) %>% mutate(x = 0.04 * Lim, y = Val + Lim,
+                                                         Lab = ifelse(Val == 0, "0 = benchmark", sprintf("%+.1f", Val)))
+
+    ggplot() +
+        geom_path(data = Rings, aes(x, y, group = Val, linewidth = Val == 0, colour = Val == 0), show.legend = FALSE) +
+        geom_segment(data = Spokes, aes(x = 0, y = 0, xend = x, yend = y), colour = "grey88", linewidth = 0.3) +
+        geom_polygon(data = Poly, aes(x, y, fill = Name, colour = Name), alpha = 0.35, linewidth = 0.7) +
+        geom_polygon(data = SC, aes(x, y), fill = NA, colour = "#E0245E", linetype = "dashed", linewidth = 0.5) +
+        geom_point(data = Poly, aes(x, y, colour = Name), size = 1.2) +
+        geom_text(data = Labs, aes(x, y, label = Lab), size = 2.3, colour = "grey30", lineheight = 0.85) +
+        geom_text(data = RingLab, aes(x, y, label = Lab), size = 2, colour = "grey45", hjust = 0, vjust = -0.3) +
+        facet_wrap(~Name, ncol = 3) +
+        scale_colour_manual(values = c(Pal, "TRUE" = "grey35", "FALSE" = "grey85"), guide = "none") +
+        scale_linewidth_manual(values = c("TRUE" = 0.6, "FALSE" = 0.3)) +
+        scale_fill_manual(values = Pal, guide = "none") +
+        coord_equal(clip = "off") +
         labs(title = "SafeCore's factor fingerprint: quality and momentum, not low volatility",
-             subtitle = paste0("Active exposure vs the Capped SWIX (weighted z-scores), average of the last ", Months, " months"),
-             caption = "0 = same exposure as the benchmark. Own scores from price data; others from the third-party vendor.",
+             subtitle = paste0("Active exposure vs the Capped SWIX (weighted z-scores), average of the last ", Months,
+                               " months.\nDashed pink outline = SafeCore, repeated in every panel for comparison"),
+             caption = "Points outside the dark ring = more exposure than the benchmark. Own scores from price data; others from the third-party vendor.",
              x = NULL, y = NULL) +
-        theme_sleek() + theme(panel.grid.major.y = element_line(colour = "grey92", linewidth = 0.3))
+        theme_sleek() +
+        theme(axis.text = element_blank(), panel.grid.major.y = element_blank(), axis.line.x = element_blank(),
+              strip.text = element_text(hjust = 0.5), panel.spacing = unit(22, "pt"))
 }
 
 # --- 11) Factor drift: SafeCore's active exposures over time --------------------------
@@ -297,3 +332,43 @@ Plot_Factor_Drift <- function(AE) {
              caption = Events_Caption(MinDate = min(AE$date)), x = NULL, y = NULL) +
         theme_sleek()
 }
+
+# --- Weight vs risk: two waffle charts (100 squares each) ----------------------------
+# (idea from the R Graph Gallery: "waffle chart")
+Plot_Risk_Waffle <- function(RC, At = max(RC$date)) {
+
+    # Each sector's share, rounded to whole squares out of 100 (largest-remainder rounding)
+    Squares <- function(Share) {
+        Share <- pmax(Share, 0) / sum(pmax(Share, 0)) * 100
+        N <- floor(Share)
+        Extra <- order(Share - N, decreasing = TRUE)[seq_len(100 - sum(N))]
+        N[Extra] <- N[Extra] + 1
+        N
+    }
+
+    S <- RC %>% filter(date == At) %>%
+        group_by(Sector) %>% summarise(Weight = sum(weight), Risk = sum(RiskContrib), .groups = "drop") %>%
+        mutate(Sector = factor(Sector, levels = names(Sector_Pal))) %>% arrange(Sector)
+
+    W <- bind_rows(
+        tibble(Panel = "Share of the fund's weight", Sector = rep(S$Sector, Squares(S$Weight))),
+        tibble(Panel = "Share of the fund's risk",   Sector = rep(S$Sector, Squares(S$Risk)))) %>%
+        group_by(Panel) %>% mutate(i = row_number() - 1, x = i %% 10, y = i %/% 10) %>% ungroup() %>%
+        mutate(Panel = factor(Panel, levels = c("Share of the fund's weight", "Share of the fund's risk")))
+
+    Res <- S %>% filter(Sector == "Resources")
+
+    ggplot(W, aes(x, y, fill = Sector)) +
+        geom_tile(colour = "white", linewidth = 1.2, width = 1, height = 1) +
+        facet_wrap(~Panel) +
+        scale_fill_manual(values = Sector_Pal, drop = TRUE) +
+        coord_equal() +
+        labs(title = paste0("Resources are ", round(Res$Weight * 100), "% of SafeCore, but ", round(Res$Risk * 100), "% of its risk"),
+             subtitle = paste0("Each square = 1% of the fund, ", format(At, "%B %Y"),
+                               " (risk = Euler contribution to portfolio variance)"),
+             x = NULL, y = NULL) +
+        theme_sleek() +
+        theme(axis.text = element_blank(), panel.grid.major.y = element_blank(), axis.line.x = element_blank(),
+              strip.text = element_text(hjust = 0.5, size = rel(1.05)))
+}
+

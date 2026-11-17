@@ -1,121 +1,85 @@
 ---
-# IMPORTANT: Change settings here, but DO NOT change the spacing AT ALL.
-# Remove comments and add values where applicable.
-# The descriptions below should be self-explanatory
+title: "Building a Global Balanced Index Fund under a Constrained Mandate"
 
-title: "Helping You Write Academic Papers in R using Texevier"
-#subtitle: "This will appear as Right Header"
 
 documentclass: "elsarticle"
 
 # --------- Thesis title (Optional - set to FALSE by default).
-# You can move the details below around as you please.
 Thesis_FP: FALSE
-# Entry1: "An unbelievable study with a title spanning multiple lines."
-# Entry2: "\\textbf{Some Guy}" # textbf for bold
-# Entry3: "A thesis submitted toward the degree of Doctor of Philosophy"
-# Uni_Logo: Tex/Logo.png # Place a logo in the indicated location (from your root, e.g. defaults to ~/Tex/Logo.png) and uncomment this line. Leave uncommented for no image
-# Logo_width: 0.3 # If using a logo - use this to set width (size) of image
-# Entry4: "Under the supervision of: \\vfill Prof. Joe Smith and Dr. Frank Smith"
-# Entry5: "Stellenbosch University"
-# Entry6: April 2020
-# Entry7:
-# Entry8:
 
 # --------- Front Page
-# Comment: ----- Follow this pattern for up to 5 authors
-AddTitle: TRUE # Use FALSE when submitting to peer reviewed platform. This will remove author names.
-Author1: "Jane Doe^[__Contributions:__  \\newline _The authors would like to thank no institution for money donated to this project. Thank you sincerely._]"  # First Author - note the thanks message displayed as an italic footnote of first page.
-Ref1: "Some Institution, Cape Town, South Africa" # First Author's Affiliation
-Email1: "nfkatzke\\@gmail.com" # First Author's Email address
+AddTitle: TRUE
+Author1: "Sihlelelwe Nzima"
+Ref1: "Stellenbosch University, Stellenbosch, South Africa"
 
-Author2: "John Smith"
-Ref2: "Some other Institution, Cape Town, South Africa"
-Email2: "John\\@gmail.com"
-CommonAffiliation_12: TRUE # If Author 1 and 2 have a common affiliation. Works with _13, _23, etc.
-
-Author3: "John Doe"
-Email3: "Joe\\@gmail.com"
-
-CorrespAuthor_1: TRUE  # If corresponding author is author 3, e.g., use CorrespAuthor_3: TRUE
-
-# Comment out below to remove both. JEL Codes only given if keywords also given.
-keywords: "Multivariate GARCH \\sep Kalman Filter \\sep Copula" # Use \\sep to separate
-JELCodes: "L250 \\sep L100"
+keywords: "Portfolio optimisation \\sep Constrained mean-variance \\sep Shrinkage \\sep Balanced fund" # Use \\sep to separate
+JELCodes: "G11 \\sep C61"
 
 # ----- Manage headers and footers:
-#BottomLFooter: $Title$
-#BottomCFooter:
-#TopLHeader: \leftmark # Adds section name at topleft. Remove comment to add it.
-BottomRFooter: "\\footnotesize Page \\thepage" # Add a '#' before this line to remove footer.
+BottomRFooter: "\\footnotesize Page \\thepage"
 addtoprule: TRUE
-addfootrule: TRUE               # Use if footers added. Add '#' to remove line.
+addfootrule: TRUE
 
 # --------- page margins:
 margin: 2.3 # Sides
 bottom: 2 # bottom
 top: 2.5 # Top
-HardSet_layout: TRUE # Hard-set the spacing of words in your document. This will stop LaTeX squashing text to fit on pages, e.g.
-# This is done by hard-setting the spacing dimensions. Set to FALSE if you want LaTeX to optimize this for your paper.
+HardSet_layout: TRUE
 
 # --------- Line numbers
-linenumbers: FALSE # Used when submitting to journal
+linenumbers: FALSE
 
 # ---------- References settings:
-# You can download cls format here: https://www.zotero.org/ - simply search for your institution. You can also edit and save cls formats here: https://editor.citationstyles.org/about/
-# Hit download, store it in Tex/ folder, and change reference below - easy.
 bibliography: Tex/ref.bib       # Do not edit: Keep this naming convention and location.
 csl: Tex/harvard-stellenbosch-university.csl # referencing format used.
-# By default, the bibliography only displays the cited references. If you want to change this, you can comment out one of the following:
-#nocite: '@*' # Add all items in bibliography, whether cited or not
-# nocite: |  # add specific references that aren't cited
-#  @grinold2000
-#  @Someoneelse2010
 
 # ---------- General:
-RemovePreprintSubmittedTo: TRUE  # Removes the 'preprint submitted to...' at bottom of titlepage
-Journal: "Journal of Finance"   # Journal that the paper will be submitting to, if RemovePreprintSubmittedTo is set to TRUE.
-toc: FALSE                       # Add a table of contents
-numbersections: TRUE             # Should sections (and thus figures and tables) be numbered?
-fontsize: 11pt                  # Set fontsize
-linestretch: 1.2                # Set distance between lines.
-link-citations: TRUE            # This creates dynamic links to the papers in reference list.
-
-### Adding additional latex packages:
-# header-includes:
-#    - \usepackage{colortbl} # Add additional packages here.
+RemovePreprintSubmittedTo: TRUE
+Journal: "Journal of Finance"
+toc: FALSE
+numbersections: TRUE
+fontsize: 11pt
+linestretch: 1.2
+link-citations: TRUE
 
 output:
   pdf_document:
     keep_tex: TRUE
     template: Tex/TexDefault.txt
-    fig_width: 3.5 # Adjust default figure sizes. This can also be done in the chunks of the text.
+    fig_width: 3.5
     fig_height: 3.5
 abstract: |
-  Abstract to be written here. The abstract should not be too long and should provide the reader with a good understanding what you are writing about. Academic papers are not like novels where you keep the reader in suspense. To be effective in getting others to read your paper, be as open and concise about your findings here as possible. Ideally, upon reading your abstract, the reader should feel he / she must read your paper in entirety.
+  This report constructs a quarterly-rebalanced global balanced index fund from local and global equity, bond and commodity indexes, under a mandate that caps bonds at 25%, equities at 75%, commodities at 15%, single assets at 35% and global exposure at 60%. A global bond return index is first built from 10-year yields. Three strategies are compared: minimum variance, maximum Sharpe ratio and a naive equal-weight benchmark. The mandate's bond cap binds at every rebalance and rules out the low-risk end of the efficient frontier, costing about 0.3-0.5 percentage points of expected return at a given level of risk. Out of sample (2020-2026), the minimum-variance fund delivered the best risk-adjusted return and the smallest drawdown.
 ---
 
-<!-- First: Set your default preferences for chunk options: -->
-
-<!-- If you want a chunk's code to be printed, set echo = TRUE. message = FALSE stops R printing ugly package loading details in your final paper too. I also suggest setting warning = FALSE and checking for warnings in R, else you might find ugly warnings in your paper. -->
-
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, fig.width = 6, fig.height = 5, fig.pos="H", fig.pos = 'H')
-# Note: Include = FALSE implies the code is executed, but not printed in your pdf.
-# warning and message = FALSE implies ugly messages and warnings are removed from your pdf.
-# These should be picked up when you execute the command chunks (code sections below) in your rmd, not printed in your paper!
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, fig.width = 7, fig.height = 4,
+                      fig.pos = "H", fig.align = "center", out.width = "100%", dev = "png", dpi = 200)
 
-# Lets load in example data, and see how this can be stored and later called from your 'data' folder.
-if(!require("tidyverse")) install.packages("tidyverse")
-library(tidyverse)
-Example_data <- Texevier::Ex_Dat
+pacman::p_load(tidyverse, tbl2xts, xtable)
 
-# Notice that as you are working in a .Rproj file (I am assuming you are) - the relative paths of your directories start at your specified root.
-# This means that when working in a .Rproj file, you never need to use getwd() - it is assumed as your base root automatically.
-write_rds(Example_data, path = "data/Example_data.rds")
+# Load all the functions for this question from the code folder
+list.files("code/", full.names = TRUE) %>% .[grepl("[.]R$", .)] %>% walk(~source(.))
 
+# Helper: print a tibble as a LaTeX table (xtable), as in the template
+Print_Table <- function(df, Caption, Digits = 2) {
+    print.xtable(xtable(df, caption = Caption, digits = Digits),
+                 floating = TRUE, table.placement = "H", comment = FALSE,
+                 include.rownames = FALSE, caption.placement = "top", booktabs = TRUE)
+}
 ```
 
+```{r data-load}
+Bond_Yields <- read_rds("data/Global_Bond_Yields.rds")
+Univ <- Q4_Universe(read_rds("data/MSCI_Indexes.rds"), Bond_Yields, read_rds("data/Commodities.rds"),
+                    read_rds("data/Monthly_LCL_Yield_Indexes.rds"), read_rds("data/Index_Returns_Daily.rds"))
+Cash <- Q4_Cash(read_rds("data/STeFI_Index.rds"))
+
+Reb      <- Q4_Rebalance(Univ, Cash, First = "2019-12")
+Weights  <- Q4_Weights(Reb, Univ)
+Port     <- Q4_Backtest(Weights, Univ)
+Frontier <- Q4_Latest_Frontier(Univ, Cash, Weights)
+```
 
 <!-- ############################## -->
 <!-- # Start Writing here: -->
@@ -123,301 +87,77 @@ write_rds(Example_data, path = "data/Example_data.rds")
 
 # Introduction \label{Introduction}
 
-References are to be made as follows: @fama1997[p. 33] and @grinold2000 Such authors could also be referenced in brackets [@grinold2000] and together [@fama1997 \& @grinold2000]. Source the reference code from scholar.google.com by clicking on ``cite'' below article name. Then select BibTeX at the bottom of the Cite window, and proceed to copy and paste this code into your ref.bib file, located in the directory's Tex folder. Open this file in Rstudio for ease of management, else open it in your preferred Tex environment. Add and manage your article details here for simplicity - once saved, it will self-adjust in your paper.
+A balanced index fund aims to deliver steady long-term growth by combining equities, bonds and commodities, with the mix set by rules rather than by an active manager. This report constructs such a fund from traded local and global indexes under a mandate with five limits: bonds and credit at most 25%, equities at most 75%, commodities at most 15%, any single asset at most 35%, and global exposure at most 60%. The fund is long-only and rebalanced quarterly, uses at least ten years of data for its covariance and return estimates, and holds no asset with less than five years of returns. Beyond building the fund, the report asks three further questions: what the mandate costs, which of its rules actually shape the portfolio, and whether optimisation beats simple diversification once costs and risk are considered.
 
-> I suggest renaming the top line after \@article, as done in the template ref.bib file, to something more intuitive for you to remember. Do not change the rest of the code. Also, be mindful of the fact that bib references from google scholar may at times be incorrect. Reference Latex forums for correct bibtex notation.
+# Data and the bond return index
 
-To reference a section, you have to set a label using ``\\label'' in R, and then reference it in-text as e.g. referencing a later section, Section \ref{Meth}.
+The universe consists of 14 indexes in five groups: local equity (Large Caps, Mid Caps, and the Value and Momentum factor indexes, plus listed property), local bonds (the ALBI and inflation-linked bonds), global equity (MSCI USA, Europe and Emerging Markets), global government bonds (United States and Germany) and commodities (gold and the Bloomberg Commodity Index). All returns are monthly. The euro-area yield series in the data is identical to the German one and is therefore not used. No rand-dollar exchange rate is available, so global assets are measured in US dollars, which effectively treats global exposure as currency-hedged.
 
-Writing in Rmarkdown is surprizingly easy - see [this website](https://www.rstudio.com/wp-content/uploads/2015/03/rmarkdown-reference.pdf) cheatsheet for a summary on writing Rmd writing tips.
+For global bonds only yields are provided, so a return index must first be built. Each month, a constant-maturity 10-year par bond is bought, repriced one month later at the new yield with its remaining cash flows, and credited with a month of coupon. Full repricing rather than a duration approximation captures convexity, and the method handles the negative German yields of 2015-2021. Figure \ref{bonds} shows the result: returns were strong while yields fell to 2020 and turned sharply negative as yields rose in 2022, leaving average annual returns of about 2.5% for US and 1.7% for German bonds since 2005, close to their average yields.
 
-# Data  {-}
-
-Notice how I used the curly brackets and dash to remove the numbering of the data section.
-
-Discussion of data should be thorough with a table of statistics and ideally a figure.
-
-In your tempalte folder, you will find a Data and a Code folder. In order to keep your data files neat, store all of them in your Data folder. Also, I strongly suggest keeping this Rmd file for writing and executing commands, not writing out long pieces of data-wrangling. In the example below, I simply create a ggplot template for scatter plot consistency. I suggest keeping all your data in a data folder.
-
-<!-- The following is a code chunk. It must have its own unique name (after the r), or no name. After the comma follows commands for R which are self-explanatory. By default, the code and messages will not be printed in your pdf, just the output: -->
-
-```{r Figure1, warning =  FALSE, fig.align = 'center', fig.cap = "Caption Here \\label{Figure1}", fig.height = 3, fig.width = 6, dev = 'png'}
-  # This is just a random plot to show you a plot. This is done if the getwd() does not point to your Template's directory.
-  # Set WD below to your project's working directory.
-
-  g <-
-  ggplot(data = mtcars) +
-  geom_point(aes(x = disp, y = hp, color = cyl)) +
-  theme_bw() +
-  # theme(legend.position = "none") +
-  theme(plot.title = element_text(size = 10)) +
-  theme(axis.title = element_text(size = 10),
-        axis.title.x = element_text()) +
-  labs(y = "y-axis", x = "x-axis", title = "Some amazing plot")
-
-g
-
+```{r bonds, fig.height = 3.6, fig.cap = "Ten-year government bond yields (left) and the constructed return indexes (right) \\label{bonds}"}
+Plot_Q4_Bonds(Q4_Bond_TRI(Bond_Yields))
 ```
 
-To make your graphs look extra nice in latex world, you could use Tikz device. Replace dev - 'png' with 'tikz' in the chunk below. Notice this makes the build time longer and produces extra tex files - so if you are comfortable with this, set your device to Tikz and try it out:
+# Method
 
-```{r Figure2, warning =  FALSE, fig.align = 'center', fig.cap = "Caption Here \\label{Figure2}", fig.height = 3, fig.width = 6, dev = 'png'}
+At each quarter-end from December 2019, the fund is re-optimised using all monthly data since January 2010, an expanding window that always spans at least ten years. Only assets with at least five years of returns are eligible, so Large and Mid Caps (which start in 2015) become eligible exactly at the first rebalance, Momentum from 2022 and Value from 2023. Because these assets have shorter histories, correlations are estimated pairwise and the covariance matrix is shrunk towards a constant-correlation target (Ledoit and Wolf, 2004), which stabilises the estimate. Historical average returns are notoriously noisy, so they are shrunk halfway towards the cross-sectional average. All mandate limits enter a quadratic programme as linear constraints, and three strategies are compared:
 
-ExampleData <- read_rds( "data/Example_data.rds")
+- **Minimum variance**, which uses only the covariance matrix;
+- **Maximum Sharpe ratio**, found by tracing the constrained efficient frontier and choosing the portfolio with the highest expected excess return per unit of risk;
+- **Naive (equal weight)**, the feasible portfolio closest to equal weights, as a benchmark that requires no estimates at all.
 
-source("code/Example_Plot_Scatter.R") # Load a function from your 'code' folder. This e.g. plots scatters to your own preferences.
-source( "code/Data_Create.R") #
+Weights apply from the month after each rebalance and drift with returns until the next one.
 
-ExampleData <- Data_Create(N = 100) # Same as the ExampleData loaded above - this is just a function to create the stored data.
+# What does the mandate cost?
 
-g <- Example_Plot_Scatter(DataInput = ExampleData,
-                          X = "Height_Score",
-                          Y = "Weight_Score",
-                          Z = "Agility_Score",
-                          Theme = theme_bw(), # run ?ggthemes for other themes.
-                          Title = "", # I prefer to use the caption set above.
-                          Ylab = "Height",
-                          Xlab = "Lenght",
-                          LegendTitle = "Agility",
-                          TitleSize = 10,
-                          LabSize = 10)
+Figure \ref{frontier} compares the efficient frontier at the latest rebalance with and without the mandate's limits (keeping only the long-only rule). The shaded gap is the cost of the mandate: about 0.3-0.5 percentage points of expected return at the same level of risk, and a fall in the best achievable Sharpe ratio from 0.43 to 0.38. More strikingly, the mandate removes the entire low-risk end of the frontier. Without it, the least risky portfolio has a volatility of under 5%; with it, nothing below about 9% is possible, because capping bonds at 25% and commodities at 15% forces at least 60% into equities. The unconstrained maximum-Sharpe portfolio would hold about 71% in local bonds, so the bond cap is the expensive rule.
 
-g
-
-# Although the functions above are really simple, the principle is simple: containing calculations and data wrangling in their own functions will make this template much cleaner and more manageable.
-# When you start working, delete these meaningless functions and replace with your own...
-
+```{r frontier, fig.height = 5, fig.cap = "Efficient frontiers with and without the mandate's constraints \\label{frontier}"}
+Plot_Q4_Frontier(Frontier$Mandate, Frontier$Free, Frontier$Points, Frontier$Assets)
 ```
 
-To reference the plot above, add a ``\\label'' after the caption in the chunk heading, as done above. Then reference the plot as such: As can be seen, Figures \ref{Figure1}  and \ref{Figure2} are excellent, with Figure \ref{Figure2} being particularly aesthetically pleasing due to its device setting of Tikz. The nice thing now is that it correctly numbers all your figures (and sections or tables) and will update if it moves. The links are also dynamic.
+# Which rules shape the portfolio?
 
-I very strongly suggest using ggplot2 (ideally in combination with dplyr) using the ggtheme package to change the themes of your figures.
+The quadratic programme returns a Lagrange multiplier for every constraint: a positive multiplier (a "shadow price") means the constraint is binding, so relaxing it would improve the objective. Figure \ref{binding} shows which mandate rules bind at each rebalance. The bond cap binds at every rebalance for all three strategies, confirming that the mandate keeps the fund more equity-heavy than an optimiser would choose. The minimum-variance fund also presses against the commodity cap and the 60% global limit throughout, as low-correlation global bonds and commodities are its preferred diversifiers. The maximum-Sharpe fund is pinned at the 35% cap on MSCI USA, the asset with the highest estimated return, which shows that the single-asset cap is what stops it from concentrating in US equities.
 
-Also note the information that I have placed above the chunks in the code chunks for the figures. You can edit any of these easily - visit the Rmarkdown webpage for more information.
-
-# Splitting a page
-
-You can also very easily split a page using built-in Pandoc formatting. I comment this out in the code (as this has caused issues building the pdf for some users - which I presume to be a Pandoc issue), but you are welcome to try it out yourself by commenting out the following section in your Rmd file.
-
-
-<!-- :::::: {.columns data-latex="[T]"} -->
-<!-- ::: {.column data-latex="{0.7\textwidth}"} -->
-<!-- ```{r, echo=FALSE, fig.width=4, fig.height=4} -->
-<!-- par(mar = c(4, 4, .2, .1)) -->
-<!-- plot(cars, pch = 19) -->
-<!-- ``` -->
-<!-- ::: -->
-<!-- ::: {.column data-latex="{0.05\textwidth}"} -->
-<!-- \ -->
-<!-- ::: -->
-<!-- ::: {.column data-latex="{0.2\textwidth}"} -->
-<!-- \scriptsize -->
-
-<!-- ## Data {-} -->
-<!-- The figure on the left-hand side shows the `cars` data. -->
-
-<!-- Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do -->
-<!-- eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut -->
-<!-- enim ad minim veniam, quis nostrud exercitation ullamco laboris -->
-<!-- nisi ut aliquip ex ea commodo consequat. -->
-<!-- ::: -->
-<!-- :::::: -->
-
-
-
-#  Methodology \label{Meth}
-
-## Subsection
-Ideally do not overuse subsections. It equates to bad writing.^[This is an example of a footnote by the way. Something that should also not be overused.]
-
-## Math section
-
-Equations should be written as such:
-
-\begin{align}
-\beta = \sum_{i = 1}^{\infty}\frac{\alpha^2}{\sigma_{t-1}^2} \label{eq1} \\
-\int_{x = 1}^{\infty}x_{i} = 1 \notag
-\end{align}
-
-If you would like to see the equations as you type in Rmarkdown, use $ symbols instead (see this for yourself by adjusted the equation):
-
-$$
-\beta = \sum_{i = 1}^{\infty}\frac{\alpha^2}{\sigma_{t-1}^2} \\
-\int_{x = 1}^{\infty}x_{i} = 1
-$$
-
-Note the equation above - this should appear in math in Rstudio. Writing nice math requires practice. Note I used a forward slashes to make a space in the equations. I can also align equations using  __\&__, and set to numbering only the first line. Now I will have to type ``begin equation'' which is a native \LaTeX command. Here follows a more complicated equation that you want aligned (using \& sign) and numbered:
-
-
-\begin{align}
-	y_t &= c + B(L) y_{t-1} + e_t   \label{eq2}    \\ \notag
-	e_t &= H_t^{1/2}  z_t ; \quad z_t \sim  N(0,I_N) \quad \& \quad H_t = D_tR_tD_t \\ \notag
-		D_t^2 &= {\sigma_{1,t}, \dots, \sigma_{N,t}}   \\ \notag
-		\sigma_{i,t}^2 &= \gamma_i+\kappa_{i,t}  v_{i, t-1}^2 +\eta_i  \sigma_{i, t-1}^2, \quad \forall i \\ \notag
-		R_{t, i, j} &= {diag(Q_{t, i, j}}^{-1}) . Q_{t, i, j} . diag(Q_{t, i, j}^{-1})  \\ \notag
-		Q_{t, i, j} &= (1-\alpha-\beta)  \bar{Q} + \alpha  z_t  z_t'  + \beta  Q_{t, i, j} \notag
-\end{align}
-
-Note that in \ref{eq2} I have aligned the equations by the equal signs. I also want only one tag, and I create spaces using ``quads''.
-
-See if you can figure out how to do complex math using the two examples provided in \ref{eq1} and \ref{eq2}.
-
-<!-- $$ -->
-<!-- This is a commented out section in the writing part. -->
-<!-- Comments are created by highlighting text, amnd pressing CTL+C -->
-<!-- \\begin{align} -->
-<!-- \\beta = \\alpha^2 -->
-<!-- \end{align} -->
-<!-- $$ -->
-
-
-# Including an external plot
-
-You can also include plots produced outside of your Rmarkdown file using the package *knitr*
-
-See below chunk:
-
-```{r, out.width = "205px", fig.cap=figures("Some Figure"), eval = F}
-
-knitr::include_graphics("YourFigureLocation/Logo.png")
-
+```{r binding, fig.height = 5.2, fig.cap = "Binding mandate constraints at each quarterly rebalance \\label{binding}"}
+Plot_Q4_Binding(Q4_Binding(Reb))
 ```
 
+# The portfolios
 
-# Results
+Figure \ref{weights} shows how each strategy allocates across asset groups over time, and Figure \ref{donuts} the latest allocation. The maximum-Sharpe fund holds 25% local bonds and no global bonds, concentrating its equity in MSCI USA and local large caps. The minimum-variance fund is the most diversified across asset classes, with 20% in global bonds and 15% in commodities alongside its equity. The naive fund stays close to equal weights, adjusted only where the bond and commodity caps require it.
 
-Tables can be included as follows. Use the _xtable_ (or kable) package for tables. Table placement = H implies Latex tries to place the table Here, and not on a new page (there are, however, very many ways to skin this cat. Luckily there are many forums online!).
-
-
-```{r ShortTable, results = 'asis'}
-
-library(xtable)
-data <- mtcars[1:5,] %>% tibble::as_tibble()
-
-table <- xtable(data, caption = "Short Table Example \\label{tab1}")
-  print.xtable(table,
-             # tabular.environment = "longtable",
-             floating = TRUE,
-             table.placement = 'H',
-             # scalebox = 0.3,
-             comment = FALSE,
-             caption.placement = 'bottom'
-             )
-
+```{r weights, fig.height = 3.6, fig.cap = "Asset-group weights at each rebalance \\label{weights}"}
+Plot_Q4_Weights(Weights)
 ```
 
-To reference calculations __in text__, _do this:_ From table \ref{tab1} we see the average value of mpg is `r mean(mtcars[1:5,]$mpg)`.
-
-Including tables that span across pages, use the following (note that I add below the table: ``continue on the next page''). This is a neat way of splitting your table across a page.
-
-Use the following default settings to build your own possibly long tables. Note that the following will fit on one page if it can, but cleanly spreads over multiple pages:
-
-```{r LongTable, results = 'asis'}
-
-library(xtable)
-
-data = mtcars %>% tibble::as_tibble()
-  addtorow          <- list()
-  addtorow$pos      <- list()
-  addtorow$pos[[1]] <- c(0)
-  addtorow$command  <- c(paste("\\hline \n",
-                               "\\endhead \n",
-                               "\\hline \n",
-                               "{\\footnotesize Continued on next page} \n",
-                               "\\endfoot \n",
-                               "\\endlastfoot \n",sep=""))
-table <- xtable(data, caption = "Long Table Example")
-  print.xtable(table,
-             tabular.environment = "longtable",
-             floating = FALSE, # Leave this as is.
-             table.placement = 'H', # Leave this as is.
-             booktabs = T, # Aesthetics
-             include.rownames = FALSE,  # Typically you don't want this in a table.
-             add.to.row = addtorow, # For adding the Continued on next page part...
-             comment = FALSE,
-             caption.placement = 'top',  # Where do you want the caption?
-             size="\\fontsize{12pt}{13pt}\\selectfont"  # Size of text in table..
-             )
-# See https://cran.r-project.org/web/packages/xtable/vignettes/xtableGallery.pdf for table inspiration
+```{r donuts, fig.height = 3.6, fig.cap = "Latest allocation by asset group \\label{donuts}"}
+Plot_Q4_Donuts(Weights)
 ```
 
-\hfill
+# Out-of-sample performance
 
-<!-- hfill can be used to create a space, like here between text and table. -->
+Table \ref{tab:stats} and Figure \ref{perf} summarise performance from January 2020 to September 2026. The maximum-Sharpe fund earned the highest return (11.8% a year), but with the highest volatility and by far the deepest drawdown (-23% in the COVID-19 crash). The minimum-variance fund earned almost as much (11.1%) with much less risk, giving the best Sharpe ratio and a maximum drawdown of only -14%. Both optimised funds beat the naive benchmark, which earned 9.8% a year. The cost of optimisation is turnover: the optimised funds trade about 5% of the portfolio per quarter on average against under 1% for the naive fund, with large rebalances in 2020 as the COVID-19 shock changed the estimated covariances.
 
-
-## Huxtable
-
-Huxtable is a very nice package for making working with tables between Rmarkdown and Tex easier.
-
-This cost some adjustment to the Tex templates to make it work, but it now works nicely.
-
-See documentation for this package [here](https://hughjonesd.github.io/huxtable/huxtable.html). A particularly nice addition of this package is for making the printing of regression results a joy (see [here](https://hughjonesd.github.io/huxtable/huxtable.html#creating-a-regression-table)). Here follows an example:
-
-
-If you are eager to use huxtable, comment out the Huxtable table in the Rmd template, and uncomment the colortbl package in your Rmd's root.
-
-Note that I do not include this in the ordinary template, as some latex users have complained it breaks when they build their Rmds (especially those using tidytex - I don't have this problem as I have the full Miktex installed on mine). Up to you, but I strongly recommend installing the package manually and using huxtable. To make this work, uncomment the _Adding additional latex packages_ part in yaml at the top of the Rmd file. Then comment out the huxtable example in the template below this line. Reknit, and enjoy.
-
-```{r, results = 'asis'}
-
-if(!require(huxtable)) install.packages(huxtable)
-library(huxtable)
-data(diamonds, package = 'ggplot2')
-Title <- "Regression Output"
-Label <- "Reg01"
-lm1 <- lm(price ~ carat, diamonds)
-lm2 <- lm(price ~ depth, diamonds)
-lm3 <- lm(price ~ carat + depth, diamonds)
-htab <-
-huxreg(lm1, lm2, lm3,
-                statistics = c(N = "nobs", R2 = "r.squared"),
-                note = "%stars%.") %>%
-  set_caption(Title) %>%
-  set_label(Label)
-# More settings:
-font_size(htab) <- 12
-# Let's change regression names: this is slightly hacky, but works. Comment out this section to see what the default looks like:
-  Names <- c( "Reg1", "Reg2", "Reg3")
-  for(i in 1:length(Names)) {
-    htab[1,][[1+i]] <- Names[i]
-  }
-# Now simply call the table:
-htab
-
+```{r stats, results = "asis"}
+Q4_Stats(Port, Cash) %>%
+    left_join(Q4_Turnover(Weights) %>% group_by(Strategy) %>% summarise(`Avg. turnover` = mean(Turnover)), by = "Strategy") %>%
+    mutate(across(c(`Ann. return`, `Ann. volatility`, `Max drawdown`, `Worst month`, `Avg. turnover`), ~ .x * 100)) %>%
+    Print_Table(Caption = "Out-of-sample performance, January 2020 - September 2026 (returns, volatility, drawdown and quarterly turnover in \\%) \\label{tab:stats}", Digits = 2)
 ```
 
-FYI - R also recently introduced the gt package, which is worthwhile exploring too.
+```{r perf, fig.height = 5.2, fig.cap = "Growth of R100 and drawdowns \\label{perf}"}
+Plot_Q4_Performance(Port)
+```
 
-# Lists
+Figure \ref{violins} looks at the shape of the monthly returns. The three funds have similar typical months, but their left tails differ: the minimum-variance fund's returns are close to symmetric (skewness of -0.36), while the maximum-Sharpe and naive funds show long left tails (skewness of -1.27 and -1.09) driven by sharp losses in equity sell-offs.
 
-To add lists, simply using the following notation
+```{r violins, fig.height = 4, fig.cap = "Distribution of monthly returns \\label{violins}"}
+Plot_Q4_Violins(Port)
+```
 
-* This is really simple
+# Conclusion \label{Conclusion}
 
-    + Just note the spaces here - writing in R you have to sometimes be pedantic about spaces...
-
-* Note that Rmarkdown notation removes the pain of defining \LaTeX environments!
-
-# Conclusion
-
-I hope you find this template useful. Remember, stackoverflow is your friend - use it to find answers to questions. Feel free to write me a mail if you have any questions regarding the use of this package. To cite this package, simply type citation("Texevier") in Rstudio to get the citation for @Texevier (Note that uncited references in your bibtex file will not be included in References).
-
-<!-- Make title of bibliography here: -->
-<!-- \newpage -->
-
-\newpage
-
-# References {-}
-
-<div id="refs"></div>
-
-
-# Appendix {-}
-
-## Appendix A {-}
-
-Some appendix information here
-
-## Appendix B {-}
-
+A global balanced index fund can be built from the available indexes within the mandate, and quarterly optimisation adds value over simple equal weighting. The minimum-variance fund is the most attractive: it delivered nearly the highest return with the lowest volatility, the smallest drawdown and the most symmetric return profile, and it relies only on covariance estimates, which are far more reliable than return forecasts. The mandate itself, however, deserves scrutiny. Its 25% bond cap binds at every rebalance, rules out the low-risk part of the efficient frontier and costs about 0.3-0.5 percentage points of expected return at a given level of risk; for a fund described as balanced, a higher bond limit would be worth considering. Two caveats apply: global assets are measured in US dollars because no exchange rate is available, so the rand's effect on returns is not captured, and the out-of-sample period of under seven years includes only one major sell-off.

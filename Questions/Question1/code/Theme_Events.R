@@ -1,5 +1,5 @@
 # Theme_Events.R
-# My own plot style (used instead of the default fmxdat theme) plus shaded
+# Custom plot style (used instead of the default fmxdat theme) plus shaded
 # "event eras" so readers can link volatility spikes to what happened at the time.
 
 # --- Palette: muted, modern colours. Local series = blues/purples/greens,

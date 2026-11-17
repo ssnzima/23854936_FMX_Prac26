@@ -136,7 +136,7 @@ Data notes: peer returns are winsorised each month at the 1st and 99th percentil
 ## Technical appendix: principal component analysis
 
 ::: notes
-For the more technical audience. The scree plot shows that one component explains about 82% of the variation in peer returns, with every other component explaining less than 4%. In the correlation circle, each grey arrow is a peer fund: almost all point to the edge of the circle along the first component, meaning they are almost entirely explained by it. ABC (added as a supplementary variable, so it does not influence the components) has a shorter arrow that points upwards, meaning less of its return is explained by the common driver and more by the secondary one.
+<!-- For the more technical audience. The scree plot shows that one component explains about 82% of the variation in peer returns, with every other component explaining less than 4%. In the correlation circle, each grey arrow is a peer fund: almost all point to the edge of the circle along the first component, meaning they are almost entirely explained by it. ABC (added as a supplementary variable, so it does not influence the components) has a shorter arrow that points upwards, meaning less of its return is explained by the common driver and more by the secondary one. -->
 :::
 
 ```{r pca-appendix}

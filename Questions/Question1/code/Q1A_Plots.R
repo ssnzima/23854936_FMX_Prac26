@@ -2,40 +2,58 @@
 # Plot functions for Q1 Part A. Style comes from Theme_Events.R (theme_sleek + event bands).
 
 
-# --- Rolling realised vol: local panel vs global panel --------------------------
+# --- Rolling realised vol: small multiples, every other index greyed out for context ---
+# (idea from the R Graph Gallery: "line chart with small multiples")
 Plot_Roll_Vol <- function(RollVolDF) {
 
-    RegLvls <- c("Local (ZAR)", "Global (USD)")
+    Lvls <- c("Capped SWIX", "Top 40", "Mid Caps", "Small Caps",
+              "MSCI ACWI", "MSCI EM", "S&P 500", "Euro Stoxx 50", "Nikkei 225")
+    D <- RollVolDF %>% mutate(Name = factor(Name, levels = Lvls),
+                              Panel = factor(paste0(Name, ifelse(Region == "Local (ZAR)", "  (local)", "  (global)")),
+                                             levels = paste0(Lvls, rep(c("  (local)", "  (global)"), c(4, 5)))))
 
-    RollVolDF %>%
-        mutate(Region = factor(Region, levels = RegLvls)) %>%
-        ggplot(aes(date, RollVol, colour = Name)) +
-        geom_events(MinDate = min(RollVolDF$date), FacetVar = "Region", FacetValue = "Local (ZAR)", FacetLevels = RegLvls) +
-        geom_line(linewidth = 0.5) +
-        facet_wrap(~Region, ncol = 1) +
-        scale_colour_manual(values = Pal, breaks = names(Pal)) +
-        scale_x_years() + scale_y_pct() +
+    ggplot(D, aes(date, RollVol)) +
+        geom_events(MinDate = min(D$date)) +
+        # every index in light grey in every panel (no Panel column, so it is repeated in each facet)
+        geom_line(data = D %>% select(-Panel) %>% rename(Other = Name), aes(group = Other),
+                  colour = "grey80", linewidth = 0.25) +
+        geom_line(aes(colour = Name), linewidth = 0.6) +
+        facet_wrap(~Panel, ncol = 3) +
+        scale_colour_manual(values = Pal, guide = "none") +
+        scale_x_years(Breaks = "3 years") + scale_y_pct() +
         labs(title = "Local and global volatility spike together",
-             subtitle = "Rolling 3-month realised volatility, annualised",
-             caption = Events_Caption(MinDate = min(RollVolDF$date)), x = NULL, y = NULL) +
-        theme_sleek() +
-        guides(colour = guide_legend(nrow = 2, byrow = TRUE))
+             subtitle = "Rolling 3-month realised volatility, annualised. Each panel highlights one index; the others are in grey",
+             caption = Events_Caption(MinDate = min(D$date)), x = NULL, y = NULL) +
+        theme_sleek()
 }
 
-# --- Calendar-year vol bars -----------------------------------------------------
-Plot_Calendar_Vol <- function(CalVolDF, Names = c("Capped SWIX", "MSCI EM", "MSCI ACWI", "S&P 500")) {
+# --- Calendar-year vol: heatmap of index x year ------------------------------------------
+# (idea from the R Graph Gallery: "heatmap for time series")
+Plot_Calendar_Vol <- function(CalVolDF) {
+
+    Lvls <- c("Capped SWIX", "Top 40", "Mid Caps", "Small Caps",
+              "MSCI EM", "MSCI ACWI", "S&P 500", "Euro Stoxx 50", "Nikkei 225")
+    MaxYear <- max(CalVolDF$Year)
 
     CalVolDF %>%
-        filter(Name %in% Names) %>%
-        mutate(Name = factor(Name, levels = Names)) %>%
-        ggplot(aes(factor(Year), AnnVol, fill = Name)) +
-        geom_col(position = position_dodge(width = 0.8), width = 0.75) +
-        scale_fill_manual(values = Pal) +
-        scale_y_pct() +
+        mutate(Name = factor(Name, levels = rev(Lvls)),
+               Region = factor(Region, levels = c("Local (ZAR)", "Global (USD)")),
+               Year = factor(ifelse(Year == MaxYear, paste0(Year, "*"), Year))) %>%
+        ggplot(aes(Year, Name, fill = AnnVol)) +
+        geom_tile(colour = "white", linewidth = 0.8) +
+        geom_text(aes(label = round(AnnVol * 100), colour = AnnVol > 0.21), size = 2.7, show.legend = FALSE) +
+        facet_grid(Region ~ ., scales = "free_y", space = "free_y") +
+        scale_fill_gradientn(colours = c("#F7F4EF", "#F4C7A1", "#E76F51", "#9E2A2B", "#4A0E1E"),
+                             values = scales::rescale(c(0.08, 0.15, 0.22, 0.32, 0.45)),
+                             labels = scales::percent_format(accuracy = 1), name = "Volatility") +
+        scale_colour_manual(values = c("TRUE" = "white", "FALSE" = "grey20")) +
         labs(title = "In 2026 local volatility tracks emerging markets, not developed markets",
-             subtitle = "Calendar-year realised volatility, annualised (2026 = year to September)",
-             x = NULL, y = NULL) +
-        theme_sleek()
+             subtitle = "Calendar-year realised volatility, annualised (%)",
+             caption = paste0("* ", MaxYear, " = year to September."), x = NULL, y = NULL) +
+        theme_sleek() +
+        theme(panel.grid.major.y = element_blank(), axis.line.x = element_blank(), legend.position = "right",
+              legend.title = element_text(size = rel(0.8), colour = "grey35"), legend.key.height = unit(18, "pt"),
+              strip.text.y = element_text(angle = 0, hjust = 0))
 }
 
 # --- GARCH conditional vol ------------------------------------------------------
@@ -118,4 +136,47 @@ Plot_Cor_Heatmap <- function(Panel) {
         theme_sleek() +
         theme(axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.major.y = element_blank(),
               axis.line.x = element_blank(), legend.position = "right")
+}
+
+# --- Volatility regimes: arrows from pre-2020 to post-2020 average vol -----------------------
+Plot_Vol_Regimes <- function(Regimes) {
+
+    W <- Regimes %>%
+        select(Sample, Region, Name, Period, AvgVol, HighVolDays) %>%
+        pivot_wider(names_from = Period, values_from = c(AvgVol, HighVolDays)) %>%
+        mutate(Sample = factor(Sample, levels = c("Full sample", "Excluding the COVID crash")),
+               Name = fct_reorder(Name, `AvgVol_Post-2020` - `AvgVol_Pre-2020`),
+               Lab = paste0(round(`HighVolDays_Pre-2020` * 100), "% -> ", round(`HighVolDays_Post-2020` * 100), "%"))
+
+    ggplot(W, aes(y = Name)) +
+        geom_segment(aes(x = `AvgVol_Pre-2020`, xend = `AvgVol_Post-2020`, yend = Name, colour = Region),
+                     arrow = arrow(length = unit(0.18, "cm"), type = "closed"), linewidth = 0.9) +
+        geom_point(aes(x = `AvgVol_Pre-2020`), colour = "grey55", size = 2) +
+        geom_text(aes(x = pmax(`AvgVol_Pre-2020`, `AvgVol_Post-2020`), label = Lab), hjust = -0.08, size = 2.5, colour = "grey40") +
+        facet_wrap(~Sample, nrow = 1) +
+        scale_colour_manual(values = c("Local (ZAR)" = "#1F3A5F", "Global (USD)" = "#E76F51")) +
+        scale_x_continuous(labels = scales::percent_format(accuracy = 1), expand = expansion(mult = c(0.05, 0.3))) +
+        labs(title = "Outside COVID, local vol barely rose, but high-vol days became more common",
+             subtitle = "Average rolling 3-month vol: pre-2020 (grey dot) to post-2020 (arrow head)",
+             caption = "Labels: share of days above the index's own 80th percentile of vol, pre-2020 -> post-2020",
+             x = "Average annualised volatility", y = NULL, colour = NULL) +
+        theme_sleek() + theme(panel.grid.major.x = element_line(colour = "grey92", linewidth = 0.3))
+}
+
+# --- Event study: grouped bars of the rise in volatility -------------------------------------
+Plot_Event_Vol <- function(EventLong) {
+
+    EventLong %>%
+        mutate(Event = fct_reorder(paste0(Event, " (", Type, ")"), Start, .desc = TRUE),
+               Name = factor(Name, levels = c("Capped SWIX", "MSCI EM", "MSCI ACWI"))) %>%
+        ggplot(aes(Rise, Event, fill = Name)) +
+        geom_col(position = position_dodge(width = 0.8), width = 0.75) +
+        geom_text(aes(label = sprintf("%.1f", Rise * 100)), position = position_dodge(width = 0.8),
+                  hjust = -0.15, size = 2.6, colour = "grey30") +
+        scale_fill_manual(values = Pal) +
+        scale_x_continuous(labels = function(x) paste0(round(x * 100), "pp"), expand = expansion(mult = c(0, 0.12))) +
+        labs(title = "Local shocks stay local and small; global shocks hit everyone",
+             subtitle = "Rise in rolling 3-month volatility around each event (percentage points)",
+             x = NULL, y = NULL, fill = NULL) +
+        theme_sleek() + theme(panel.grid.major.x = element_line(colour = "grey92", linewidth = 0.3))
 }

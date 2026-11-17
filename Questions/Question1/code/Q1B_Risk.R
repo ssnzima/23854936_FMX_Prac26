@@ -9,7 +9,7 @@
 # different from its weight (a volatile, highly correlated stock "punches above
 # its weight").
 # The covariance matrix uses the past year of daily returns and is shrunk towards
-# a structured target (Ledoit-Wolf), as in Practical 3: with ~40 stocks and 252 days
+# a structured target (Ledoit-Wolf): with ~40 stocks and 252 days
 # the sample covariance matrix is noisy, and shrinkage stabilises it.
 Q1B_Risk_Contrib <- function(Holdings, Stock_Rets, Lookback = 252, MinObs = 200,
                              From = as.Date("2015-12-01")) {

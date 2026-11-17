@@ -94,3 +94,26 @@ Event_Vol_Table <- function(RollVolDF, Events, Names = c("Capped SWIX", "MSCI EM
         pivot_wider(names_from = Name, values_from = Rise) %>%
         select(Event, Type, all_of(Names))
 }
+
+# --- Long-format versions used by the regime and event charts -----------------------------
+# Volatility regimes for both samples (full, and excluding the COVID crash)
+Vol_Regimes_Long <- function(RollVolDF, SplitDate = as.Date("2020-01-01"), Pctl = 0.8,
+                             Exclude = as.Date(c("2020-02-15", "2020-07-31"))) {
+    bind_rows(RollVolDF %>% mutate(Sample = "Full sample"),
+              RollVolDF %>% filter(!(date >= Exclude[1] & date <= Exclude[2])) %>% mutate(Sample = "Excluding the COVID crash")) %>%
+        group_by(Sample, Region, Name) %>%
+        mutate(HighVolCut = quantile(RollVol, Pctl), Period = ifelse(date < SplitDate, "Pre-2020", "Post-2020")) %>%
+        group_by(Sample, Region, Name, Period) %>%
+        summarise(AvgVol = mean(RollVol), HighVolDays = mean(RollVol > HighVolCut), .groups = "drop")
+}
+
+# Rise in rolling vol around each event (peak during the event + 30 days minus the level before it)
+Event_Vol_Long <- function(RollVolDF, Events, Names = c("Capped SWIX", "MSCI EM", "MSCI ACWI")) {
+    Events %>%
+        mutate(Res = map2(Start, End, function(s, e) {
+            RollVolDF %>% filter(Name %in% Names) %>% group_by(Name) %>%
+                summarise(Pre = last(RollVol[date < s]), Peak = max(RollVol[date >= s & date <= e + 30]), .groups = "drop")
+        })) %>%
+        unnest(Res) %>% mutate(Rise = Peak - Pre) %>%
+        select(Event = Label, Start, Type, Name, Pre, Peak, Rise)
+}

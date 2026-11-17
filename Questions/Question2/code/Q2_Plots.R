@@ -184,25 +184,46 @@ Plot_Q2_Risk_Return <- function(RR) {
                               panel.grid.major.x = element_line(colour = "grey92", linewidth = 0.3))
 }
 
-# --- 8) Stratification: distribution of monthly returns, calm vs stressed -------------------
-Plot_Q2_Strat_Box <- function(StratM) {
+# --- 8) Stratification: double ridgeline of monthly returns, calm vs stressed ---------------
+# (idea from the R Graph Gallery: "double ridgeline plot")
+Plot_Q2_Strat_Ridges <- function(StratM) {
 
-    StratM %>%
-        mutate(Name = factor(Name, levels = Size_Lvls),
-               Regime = factor(Regime, levels = c("Low", "High"), labels = c("Calmest 20% of months", "Most stressed 20% of months")),
-               Stratifier = factor(Stratifier, levels = c("Rand volatility (SAVI)", "Global fear (VIX)"))) %>%
-        ggplot(aes(Name, Ret, fill = Regime, colour = Regime)) +
-        geom_hline(yintercept = 0, colour = "grey50", linewidth = 0.3) +
-        geom_boxplot(alpha = 0.25, outlier.shape = NA, width = 0.6, position = position_dodge(width = 0.75)) +
-        geom_point(position = position_jitterdodge(jitter.width = 0.12, dodge.width = 0.75, seed = 1), size = 1, alpha = 0.6) +
-        stat_summary(fun = mean, geom = "point", shape = 23, size = 2.6, fill = "white",
-                     position = position_dodge(width = 0.75), show.legend = FALSE) +
-        facet_wrap(~Stratifier, ncol = 1) +
+    Lvls <- rev(c("Capped SWIX", "Large Caps", "Mid Caps", "Small Caps"))
+    Regs <- c("Low" = "Calmest 20% of months", "High" = "Most stressed 20% of months")
+    Grid <- seq(-0.13, 0.17, length.out = 300)
+
+    D <- StratM %>%
+        mutate(Row = match(Name, Lvls), Regime = Regs[Regime],
+               Stratifier = factor(Stratifier, levels = c("Rand volatility (SAVI)", "Global fear (VIX)")))
+
+    # Kernel density of each group on a common grid; each ridge sits on its index's row
+    Dens <- D %>%
+        group_by(Stratifier, Name, Row, Regime) %>%
+        reframe(x = Grid, h = density(Ret, from = min(Grid), to = max(Grid), n = length(Grid), bw = 0.012)$y) %>%
+        mutate(h = h / max(h) * 0.9)
+
+    Meds <- D %>% group_by(Stratifier, Name, Row, Regime) %>%
+        summarise(Med = median(Ret), Fall = mean(Ret < 0), .groups = "drop")
+    Lab <- Meds %>% filter(Regime == Regs["High"]) %>%
+        mutate(Lab = paste0("down in ", round(Fall * 100), "% of stressed months"))
+
+    ggplot() +
+        geom_vline(xintercept = 0, colour = "grey60", linewidth = 0.3) +
+        geom_ribbon(data = Dens, aes(x, ymin = Row, ymax = Row + h, fill = Regime, group = interaction(Name, Regime)),
+                    alpha = 0.45, colour = NA) +
+        geom_line(data = Dens, aes(x, Row + h, colour = Regime, group = interaction(Name, Regime)), linewidth = 0.45) +
+        geom_segment(data = Meds, aes(x = Med, xend = Med, y = Row, yend = Row + 0.55, colour = Regime), linewidth = 0.9) +
+        geom_label(data = Lab, aes(x = 0.165, y = Row + 0.2, label = Lab), hjust = 1, size = 2.3, colour = "#8A0F3C",
+                   fill = "white", label.size = 0, label.padding = unit(1, "pt")) +
+        facet_wrap(~Stratifier, ncol = 2) +
+        scale_y_continuous(breaks = seq_along(Lvls), labels = Lvls, expand = expansion(mult = c(0.02, 0.08))) +
+        scale_x_continuous(labels = scales::percent_format(accuracy = 1)) +
         scale_fill_manual(values = c("Calmest 20% of months" = "#5FA8D3", "Most stressed 20% of months" = "#E0245E")) +
         scale_colour_manual(values = c("Calmest 20% of months" = "#1F3A5F", "Most stressed 20% of months" = "#8A0F3C")) +
-        scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
         labs(title = "Rand stress drags most indexes down; mid caps hold up best",
-             subtitle = "Monthly returns in the calmest vs most stressed fifth of months (boxes = middle 50%, diamonds = mean)",
-             x = NULL, y = "Monthly return", fill = NULL, colour = NULL) +
-        theme_sleek()
+             subtitle = "Distribution of monthly returns in the calmest vs most stressed fifth of months (vertical ticks = medians)",
+             x = "Monthly return", y = NULL) +
+        theme_sleek() + theme(panel.grid.major.x = element_line(colour = "grey92", linewidth = 0.3),
+                              panel.grid.major.y = element_blank(), axis.text.y = element_text(face = "bold", colour = "grey25"))
 }
+

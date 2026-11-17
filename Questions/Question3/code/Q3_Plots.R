@@ -194,7 +194,7 @@ Plot_Q3_Alpha <- function(Alpha) {
         theme_slide() + theme(panel.grid.major.x = element_line(colour = "grey92", linewidth = 0.3))
 }
 
-# --- 9) Technical appendix: scree plot + variable correlation circle (Practical 4 style) -----
+# --- 9) Technical appendix: scree plot + variable correlation circle -----
 Plot_Q3_PCA_Prac <- function(PCA_F) {
 
     Eig <- tibble(Dim = 1:10, Share = PCA_F$eig[1:10, 2] / 100)

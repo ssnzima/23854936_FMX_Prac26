@@ -1,5 +1,5 @@
 # Q2_Stratification.R
-# Stratification (as in Practical 2's bonus): compare the size indexes in months of
+# Stratification: compare the size indexes in months of
 # extreme stress vs extreme calm, where "extreme" = a month in the top or bottom
 # quintile (20%) of a stratifying series. Two stratifiers are used:
 #   * rand volatility (SAVI) - local currency stress

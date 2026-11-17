@@ -220,12 +220,12 @@
 \small{
 This note examines whether volatility on the local equity market has
 increased, how it relates to offshore economic and policy uncertainty,
-and what this means for building risk ballasts into our local equity
-funds. Local volatility has become more episodic since 2020 rather than
+and what this means for building risk ballasts into local equity funds.
+Local volatility has become more episodic since 2020 rather than
 permanently higher, and its spikes are largely imported: global implied
 volatility and oil price volatility explain close to three quarters of
 the monthly variation in Capped SWIX volatility, while local currency
-volatility adds little. Our SafeCore fund has outperformed its benchmark
+volatility adds little. The SafeCore fund has outperformed its benchmark
 but has not been a risk ballast: its volatility matches the market's,
 two gold miners carry almost half of its risk, and its quality-momentum
 style has no low-volatility tilt. The opportunity for stock selection,
@@ -288,7 +288,7 @@ uncertainty are spilling over into local equity markets, and that local
 portfolios should lean more towards lower-volatility stocks. This note
 tests that argument in three steps. Part A establishes whether local
 volatility has increased and whether it mirrors the global experience.
-Part B evaluates how our SafeCore fund has navigated volatility and what
+Part B evaluates how the SafeCore fund has navigated volatility and what
 its factor exposures are. Part C studies dispersion and correlation, to
 gauge the alpha opportunity in the market since 2020.
 
@@ -299,13 +299,13 @@ gauge the alpha opportunity in the market since 2020.
 
 Local index returns (Capped SWIX, Top 40, Mid Caps and Small Caps, in
 rand) are available from January 2015, so the analysis runs from January
-2015 to September 2026. For the global comparison I use total return
-indexes in US dollars: MSCI ACWI, MSCI Emerging Markets, the S\&P 500,
-the Euro Stoxx 50 and the Nikkei 225. To link volatility to uncertainty
-I use implied volatility (VIX, V2X, VXEEM), economic policy uncertainty
-(EPU) indexes, US bond market volatility (MOVE), Brent oil volatility
-and currency volatility (SAVI for USDZAR and JP Morgan's global FX
-volatility index).
+2015 to September 2026. The global comparison uses total return indexes
+in US dollars: MSCI ACWI, MSCI Emerging Markets, the S\&P 500, the Euro
+Stoxx 50 and the Nikkei 225. To link volatility to uncertainty, the
+analysis uses implied volatility (VIX, V2X, VXEEM), economic policy
+uncertainty (EPU) indexes, US bond market volatility (MOVE), Brent oil
+volatility and currency volatility (SAVI for USDZAR and JP Morgan's
+global FX volatility index).
 
 Two data issues were treated. The global and European EPU indexes are
 monthly values repeated on every day, so all comparisons with them are
@@ -316,14 +316,15 @@ values were rescaled.
 \subsection{Realised volatility}\label{realised-volatility}
 
 Figure \ref{rollvol} plots the rolling three-month realised volatility
-of each index. The shaded bands mark five market events: two South
-African political shocks (Nenegate in December 2015, and the March 2017
-cabinet reshuffle followed by the sovereign downgrade to junk) and three
-global shocks (the COVID-19 crash, the 2022 Ukraine war and oil price
-shock, and the April 2025 US tariff shock). The COVID-19 crash dominates
-every series, with local volatility peaking above 50\%. Outside of 2020,
-local volatility has been punctuated by shorter spikes, most of which
-coincide with the global events.
+of each index, with every other index shown in grey for context. The
+shaded bands mark five market events: two South African political shocks
+(Nenegate in December 2015, and the March 2017 cabinet reshuffle
+followed by the sovereign downgrade to junk) and three global shocks
+(the COVID-19 crash, the 2022 Ukraine war and oil price shock, and the
+April 2025 US tariff shock). The COVID-19 crash dominates every series,
+with local volatility peaking above 50\%. Outside of 2020, local
+volatility has been punctuated by shorter spikes, most of which coincide
+with the global events.
 
 \begin{figure}[H]
 
@@ -331,7 +332,7 @@ coincide with the global events.
 
 }
 
-\caption{Rolling 3-month realised volatility, local vs global \label{rollvol}}\label{fig:rollvol}
+\caption{Rolling 3-month realised volatility: each panel highlights one index against all others (grey) \label{rollvol}}\label{fig:rollvol}
 \end{figure}
 
 Figure \ref{calvol} shows the same story by calendar year. The notable
@@ -347,11 +348,11 @@ the developed market one.
 
 }
 
-\caption{Calendar-year realised volatility \label{calvol}}\label{fig:calvol}
+\caption{Calendar-year realised volatility (\%) \label{calvol}}\label{fig:calvol}
 \end{figure}
 
-Table \ref{tab:regime} compares average volatility before and after
-2020, and the share of days each index spends in a high-volatility state
+Figure \ref{regime} compares average volatility before and after 2020,
+and the share of days each index spends in a high-volatility state
 (above its own long-run 80th percentile). Including the COVID period,
 every index shows higher volatility after 2020. Once the COVID crash is
 excluded, however, average Capped SWIX volatility barely rises (from
@@ -361,35 +362,21 @@ therefore better described as \textbf{more frequent volatility episodes}
 than as a permanently higher level. It is also smaller than the increase
 seen in developed markets such as the S\&P 500 and the Nikkei.
 
-\begin{table}[H]
-\centering
-\caption{Average rolling volatility (\%) and share of high-volatility days, before and after 2020 \label{tab:regime}} 
-\begin{tabular}{llrrrrr}
-  \toprule
-Sample & Index & Vol pre-2020 & Vol post-2020 & Change & High-vol days pre (\%) & High-vol days post (\%) \\ 
-  \midrule
-Full sample & S\&P 500 & 12.6 & 17.6 & 4.9 & 11.4 & 26.1 \\ 
-  Full sample & MSCI ACWI & 10.4 & 14.1 & 3.7 & 11.6 & 26.0 \\ 
-  Full sample & MSCI EM & 13.7 & 16.9 & 3.3 & 10.0 & 27.1 \\ 
-  Full sample & Small Caps & 9.8 & 14.1 & 4.3 & 6.6 & 29.5 \\ 
-  Full sample & Mid Caps & 13.9 & 17.9 & 3.9 & 9.9 & 27.1 \\ 
-  Full sample & Capped SWIX & 15.4 & 17.5 & 2.2 & 15.1 & 23.5 \\ 
-  Excl. COVID crash & S\&P 500 & 12.6 & 15.6 & 3.0 & 15.7 & 23.2 \\ 
-  Excl. COVID crash & MSCI EM & 13.7 & 16.1 & 2.4 & 12.6 & 25.6 \\ 
-  Excl. COVID crash & MSCI ACWI & 10.4 & 12.7 & 2.2 & 16.5 & 22.7 \\ 
-  Excl. COVID crash & Small Caps & 9.8 & 12.5 & 2.7 & 6.9 & 29.9 \\ 
-  Excl. COVID crash & Mid Caps & 13.9 & 16.3 & 2.3 & 10.2 & 27.4 \\ 
-  Excl. COVID crash & Capped SWIX & 15.4 & 16.0 & 0.7 & 16.9 & 22.4 \\ 
-   \bottomrule
-\end{tabular}
-\end{table}
+\begin{figure}[H]
+
+{\centering \includegraphics[width=1\linewidth]{Question1_files/figure-latex/regime-1} 
+
+}
+
+\caption{Average rolling volatility and share of high-volatility days, before and after 2020 \label{regime}}\label{fig:regime}
+\end{figure}
 
 \subsection{Home-grown or imported
 volatility?}\label{home-grown-or-imported-volatility}
 
-Table \ref{tab:events} measures how far rolling volatility rose around
-each event, from the level just before the event to its peak during the
-event and the following month. The two local political shocks were
+Figure \ref{events} measures how far rolling volatility rose around each
+event, from the level just before the event to its peak during the event
+and the following month. The two local political shocks were
 short-lived: Nenegate lifted local volatility by about 6 percentage
 points, roughly three times the global move, but the 2017 reshuffle and
 junk downgrade barely moved local volatility at all, suggesting the
@@ -400,21 +387,14 @@ The large volatility episodes in the local market have therefore been
 imported, while home-grown political shocks have been smaller and faded
 quickly.
 
-\begin{table}[H]
-\centering
-\caption{Rise in rolling 3-month volatility around each event (percentage points) \label{tab:events}} 
-\begin{tabular}{llrrr}
-  \toprule
-Event & Type & Capped SWIX & MSCI EM & MSCI ACWI \\ 
-  \midrule
-Nenegate & Local & 5.8 & 3.0 & 1.9 \\ 
-  Cabinet reshuffle \& junk & Local & 0.2 & 1.4 & 1.1 \\ 
-  COVID-19 crash & Global & 39.3 & 26.1 & 41.7 \\ 
-  Ukraine war \& oil shock & Global & 7.7 & 11.2 & 7.7 \\ 
-  US tariff shock & Global & 8.6 & 9.0 & 10.3 \\ 
-   \bottomrule
-\end{tabular}
-\end{table}
+\begin{figure}[H]
+
+{\centering \includegraphics[width=1\linewidth]{Question1_files/figure-latex/events-1} 
+
+}
+
+\caption{Rise in rolling 3-month volatility around each event \label{events}}\label{fig:events}
+\end{figure}
 
 \subsection{Does local mirror global?}\label{does-local-mirror-global}
 
@@ -442,15 +422,15 @@ is local or EM-specific.
 Ljung-Box tests on squared returns strongly reject the null of no ARCH
 effects for all three series (p-values close to zero), confirming
 volatility clustering. Comparing information criteria, the asymmetric
-GARCH models fit better than the standard GARCH, so I use a
-GJR-GARCH(1,1) with an AR(1) mean and skewed-t errors. Table
-\ref{tab:garch} reports the key parameters. Two results stand out.
-First, the symmetric shock parameter (\(\alpha\)) is close to zero while
-the leverage parameter (\(\gamma\)) is large: volatility rises after bad
-news but hardly reacts to good news. Second, persistence is high (about
-0.97 locally), implying a half-life of a volatility shock of roughly a
-month. Local volatility shocks fade faster than global (MSCI ACWI)
-shocks but slower than shocks to the broad EM index.
+GARCH models fit better than the standard GARCH, so a GJR-GARCH(1,1) is
+used with an AR(1) mean and skewed-t errors. Table \ref{tab:garch}
+reports the key parameters. Two results stand out. First, the symmetric
+shock parameter (\(\alpha\)) is close to zero while the leverage
+parameter (\(\gamma\)) is large: volatility rises after bad news but
+hardly reacts to good news. Second, persistence is high (about 0.97
+locally), implying a half-life of a volatility shock of roughly a month.
+Local volatility shocks fade faster than global (MSCI ACWI) shocks but
+slower than shocks to the broad EM index.
 
 \begin{table}[H]
 \centering
@@ -548,11 +528,12 @@ rises after losses).
 Was the seminar right that oil price volatility and global policy
 uncertainty are spilling into local equities? Partly. Oil volatility
 clearly feeds into local volatility, but policy uncertainty only seems
-to matter once it turns into global market fear. For our funds, the
-practical takeaway is that the risk worth protecting against is a global
-sell-off rather than a rand shock, so any risk ballast (lower-volatility
-stocks, rand-hedge exposure) should be judged on how it holds up in
-those episodes. That is the lens used to evaluate SafeCore in Part B.
+to matter once it turns into global market fear. For local equity funds,
+the practical takeaway is that the risk worth protecting against is a
+global sell-off rather than a rand shock, so any risk ballast
+(lower-volatility stocks, rand-hedge exposure) should be judged on how
+it holds up in those episodes. That is the lens used to evaluate
+SafeCore in Part B.
 
 Three caveats apply. The regressions capture associations rather than
 causal effects. Because monthly volatility measures are persistent, the
@@ -568,10 +549,10 @@ currency movements rather than the equity markets themselves.
 
 SafeCore is constructed without any explicit view on volatility, so the
 question is whether it nonetheless behaves like a risk ballast, and if
-not, why. I first establish \emph{whether} it navigates volatility well,
-then \emph{where} its volatility comes from, and finally \emph{what kind
-of fund} it is in terms of factor exposures. The Capped SWIX (J433) is
-the benchmark throughout.
+not, why. The analysis first establishes \emph{whether} it navigates
+volatility well, then \emph{where} its volatility comes from, and
+finally \emph{what kind of fund} it is in terms of factor exposures. The
+Capped SWIX (J433) is the benchmark throughout.
 
 \subsection{Data and a ``risk ballast''
 reference}\label{data-and-a-risk-ballast-reference}
@@ -580,7 +561,7 @@ SafeCore's daily returns are built from its month-end holdings and daily
 stock returns from 2015, with weights rescaled to 100\% (at least 95\%
 of the fund's weight has return data in every month) and allowed to
 drift between rebalances. As a reference for what a low-volatility
-strategy achieves, I rebuild the Low Vol index from its constituents
+strategy achieves, the Low Vol index is rebuilt from its constituents
 with quarterly rebalancing (end of March, June, September and December),
 which extends it from 2024 back to September 2020. Over 2024-2026, where
 the two overlap, the rebuild has a daily correlation of 0.995 with the
@@ -641,7 +622,7 @@ window, by about 8\% on average.
 
 }
 
-\caption{Rolling 1-year volatility relative to the Capped SWIX \label{volratio}}\label{fig:volratio}
+\caption{Rolling 1-year volatility of SafeCore and the Low Vol index against the Capped SWIX \label{volratio}}\label{fig:volratio}
 \end{figure}
 
 Figure \ref{capture} shows how each fund participates in market moves.
@@ -693,16 +674,26 @@ volatility-management one.
 
 A stock's share of a fund's risk can differ greatly from its weight,
 because risk depends on its volatility and on how it co-moves with the
-other holdings. I therefore decompose SafeCore's variance into stock and
-sector contributions each month (Euler risk contributions, using a
+other holdings. SafeCore's variance is therefore decomposed into stock
+and sector contributions each month (Euler risk contributions, using a
 Ledoit-Wolf shrunk covariance matrix estimated over the previous year).
 Figure \ref{sectorrisk} shows that resources have always been an
 important source of risk, and this has become more prevalent recently:
-in August 2026 they made up 40\% of the fund but 68\% of its risk.
-Figure \ref{lollipop} identifies the culprits: AngloGold Ashanti and
-Gold Fields together carry almost half of the fund's risk, while banks
-and industrials (Standard Bank, Absa, FirstRand, MTN, Naspers)
-contribute less risk than their weight and act as diversifiers.
+in August 2026 they made up 40\% of the fund but 68\% of its risk
+(Figure \ref{waffle}). Figure \ref{lollipop} identifies the culprits:
+AngloGold Ashanti and Gold Fields together carry almost half of the
+fund's risk, while banks and industrials (Standard Bank, Absa,
+FirstRand, MTN, Naspers) contribute less risk than their weight and act
+as diversifiers.
+
+\begin{figure}[H]
+
+{\centering \includegraphics[width=1\linewidth]{Question1_files/figure-latex/waffle-1} 
+
+}
+
+\caption{Share of SafeCore's weight vs share of its risk by sector, latest month (each square = 1\%) \label{waffle}}\label{fig:waffle}
+\end{figure}
 
 \begin{figure}[H]
 
@@ -742,19 +733,19 @@ source of local volatility.
 
 \subsection{Factor exposures}\label{factor-exposures}
 
-I construct two scores from price data at each month-end. Momentum is
-the return from six months to one month ago (skipping the latest month,
-whose short-term reversals would add noise), and low volatility is minus
-the stock's six-month realised volatility, so that a high score means a
-low-volatility stock. Both are standardised across stocks each month and
-capped at \(\pm 3\) to limit the influence of illiquid stocks with
-extreme moves.
+Two scores are constructed from price data at each month-end. Momentum
+is the return from six months to one month ago (skipping the latest
+month, whose short-term reversals would add noise), and low volatility
+is minus the stock's six-month realised volatility, so that a high score
+means a low-volatility stock. Both are standardised across stocks each
+month and capped at \(\pm 3\) to limit the influence of illiquid stocks
+with extreme moves.
 
-Figure \ref{scores} compares them with the third party's scores. Our
+Figure \ref{scores} compares them with the third party's scores. The own
 momentum score agrees well with the vendor's (an average rank
 correlation of about 0.6); the largest disagreements are the gold and
 platinum miners, which the vendor still rates as high-momentum,
-suggesting it uses a longer look-back. Our low-volatility score, by
+suggesting it uses a longer look-back. The own low-volatility score, by
 contrast, is essentially unrelated to the vendor's ``Volatility
 Sensitivity'' (rank correlation of about 0.1), and further checks show
 the vendor measure is also barely related to realised volatility or
@@ -771,19 +762,20 @@ be read as a low-volatility score.
 \caption{Own vs third-party factor scores \label{scores}}\label{fig:scores}
 \end{figure}
 
-To contextualise SafeCore, I aggregate the stock scores into composite
-portfolio scores (weighted averages over each portfolio's holdings) for
-SafeCore and the Value, Momentum, Quality and Low Vol indexes. Because
-the vendor's scores turn out to be benchmark-relative (the Capped SWIX
-scores almost exactly zero on every vendor factor), all exposures are
-expressed relative to the Capped SWIX. The factor indexes line up with
-their labels, which validates the approach. Against them, SafeCore's
-fingerprint (Figure \ref{finger}) is that of a quality-momentum fund
-with a mild value tilt and no low-volatility tilt at all. Figure
-\ref{drift} adds the timing: SafeCore's momentum exposure rose sharply
-in 2026 while its low-volatility exposure turned negative, which is how
-the fund drifted into the volatile gold miners that now dominate its
-risk.
+To contextualise SafeCore, the stock scores are aggregated into
+composite portfolio scores (weighted averages over each portfolio's
+holdings) for SafeCore and the Value, Momentum, Quality and Low Vol
+indexes. Because the vendor's scores turn out to be benchmark-relative
+(the Capped SWIX scores almost exactly zero on every vendor factor), all
+exposures are expressed relative to the Capped SWIX. The factor indexes
+line up with their labels, which validates the approach. Against them,
+SafeCore's fingerprint (Figure \ref{finger}), whose shape is closest to
+the Momentum and Quality indexes and furthest from Low Vol, is that of a
+quality-momentum fund with a mild value tilt and no low-volatility tilt
+at all. Figure \ref{drift} adds the timing: SafeCore's momentum exposure
+rose sharply in 2026 while its low-volatility exposure turned negative,
+which is how the fund drifted into the volatile gold miners that now
+dominate its risk.
 
 \begin{figure}[H]
 
@@ -791,7 +783,7 @@ risk.
 
 }
 
-\caption{Factor fingerprint: active exposures vs the Capped SWIX (last 12 months) \label{finger}}\label{fig:finger}
+\caption{Factor fingerprints: active exposures vs the Capped SWIX, last 12 months (dashed outline = SafeCore) \label{finger}}\label{fig:finger}
 \end{figure}
 
 \begin{figure}[H]
@@ -823,7 +815,7 @@ markets.
 \label{PartC}}{Part C: The alpha opportunity since 2020 }}\label{part-c-the-alpha-opportunity-since-2020}
 
 Active managers often add value when stocks behave differently from one
-another. I therefore measure the alpha opportunity from two
+another. The alpha opportunity is therefore measured from two
 complementary angles: dispersion (how far apart stock returns are on a
 given day) and correlation (how much stocks move together over time).
 High dispersion with low correlation describes a stock-picker's market;
@@ -832,19 +824,19 @@ data is available from August 2020.
 
 \subsection{Dispersion}\label{dispersion}
 
-I measure dispersion as the daily cross-sectional volatility (CSV) of
+Dispersion is measured as the daily cross-sectional volatility (CSV) of
 the Capped SWIX constituents, weighted by their previous-day index
 weights: \[CSV_t = \sqrt{\sum_i w_{i,t-1}(R_{i,t} - \bar{R}_t)^2}\]
-where \(\bar{R}_t\) is the weighted average (index) return. I prefer the
-weighted measure because it reflects the opportunity relevant to a fund
-benchmarked against the Capped SWIX, where a large move in a stock with
-a negligible index weight matters little, and because the unweighted
-measure is dominated by small, illiquid stocks with erratic prices. Two
-corporate-action artefacts were removed before the calculation (the
-listing of Richemont's shareholder warrants in November 2020, which
-shows a one-day ``return'' of over 369,000\%, and the Fortress A/B share
-restructure in February 2024); the warrant print alone would otherwise
-have tripled November 2020's dispersion.
+where \(\bar{R}_t\) is the weighted average (index) return. The weighted
+measure is preferred because it reflects the opportunity relevant to a
+fund benchmarked against the Capped SWIX, where a large move in a stock
+with a negligible index weight matters little, and because the
+unweighted measure is dominated by small, illiquid stocks with erratic
+prices. Two corporate-action artefacts were removed before the
+calculation (the listing of Richemont's shareholder warrants in November
+2020, which shows a one-day ``return'' of over 369,000\%, and the
+Fortress A/B share restructure in February 2024); the warrant print
+alone would otherwise have tripled November 2020's dispersion.
 
 Figure \ref{csv} shows that dispersion was high in late 2020, fell to
 its lowest level in 2024 (an average daily CSV of about 1.6\%) and has
@@ -903,8 +895,8 @@ Dispersion and correlation are only weakly related in this sample (a
 correlation of 0.17), so they capture different aspects of the
 opportunity. Figure \ref{quad} plots them against each other: 2022 sits
 in the macro-driven half of the map, 2023-2024 in the low-dispersion
-half, and many months of 2025-2026 in the stock-picker's quadrant. I
-summarise the map with an Alpha Opportunity Index, equal to standardised
+half, and many months of 2025-2026 in the stock-picker's quadrant. The
+map is summarised with an Alpha Opportunity Index, equal to standardised
 dispersion minus standardised correlation (Figure \ref{oppindex}). The
 opportunity was strong in late 2020 and early 2022, weak from mid-2022
 to 2024, and has improved markedly since 2025.

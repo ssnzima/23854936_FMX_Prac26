@@ -1,5 +1,5 @@
 # Q3_Drivers.R
-# What drives each fund's returns? Principal component analysis (as in Practical 4)
+# What drives each fund's returns? Principal component analysis
 # on peer returns identifies the common "industry" return drivers; each fund is then
 # described by how strongly it moves with those drivers.
 
@@ -37,11 +37,11 @@ Q3_PCA <- function(Funds, Months = 60) {
          Fund_Stats = Fund_Stats, N_Peers = ncol(Peers), Window = range(Wide$YM))
 }
 
-# --- PCA as in Practical 4: FactoMineR, with ABC as a supplementary variable ----------------
+# --- PCA with FactoMineR, with ABC as a supplementary variable ----------------
 # Same 5-year window and complete-history peers as above. ABC Fund enters as a
 # "supplementary" variable: it is projected onto the components (its correlation with
 # each component is computed) but plays no part in building them. This gives the
-# standard scree plot and variable correlation circle from the practical.
+# standard scree plot and variable correlation circle.
 Q3_PCA_Prac <- function(Funds, Months = 60) {
 
     YMs <- sort(unique(Funds$YM)) %>% tail(Months)

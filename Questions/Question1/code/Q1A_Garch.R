@@ -1,5 +1,5 @@
 # Q1A_Garch.R
-# Conditional volatility (GARCH) for Q1 Part A - following the Practical 6 workflow:
+# Conditional volatility (GARCH) for Q1 Part A, in three steps:
 # 1) test for ARCH effects, 2) compare candidate GARCH specs, 3) extract sigma.
 
 # --- 1) ARCH effects: Ljung-Box on squared returns -----------------------------
@@ -15,7 +15,7 @@ ARCH_Test_Table <- function(df, Names, Lag = 12) {
 }
 
 # --- Helper: one GARCH spec -----------------------------------------------------
-# AR(1) mean as in the practical; skewed-t errors because equity returns are
+# AR(1) mean; skewed-t errors because equity returns are
 # fat-tailed and negatively skewed.
 Garch_Spec <- function(Model = "gjrGARCH", Dist = "sstd") {
 

@@ -1,52 +1,96 @@
 # Financial Econometrics Practical Exam 2026
 
-**Student number:** 23854936
+## Purpose
 
-This is the main document for the financial econometrics practical: it
-contains and describes all code used in each question.
+This repository contains the submission of student **23854936** for the
+2026 Financial Econometrics practical examination. This README is the
+main document: it contains, and explains, the code used to answer every
+question, together with the key results and their interpretation.
 
-# Setup
+The README is organised as follows. The next two sections describe how
+the project folder is constructed and which packages are used. The four
+questions then follow in order:
+
+- **Question 1** examines volatility and uncertainty in the local equity
+  market: whether local volatility has increased and where it comes from
+  (Part A), whether the SafeCore fund navigates volatility effectively
+  (Part B), and the opportunity for active managers since 2020 (Part C).
+- **Question 2** compares the risk and return profiles of the large, mid
+  and small cap indexes.
+- **Question 3** builds a peer-comparison case for the ABC Fund,
+  presented as a set of slides.
+- **Question 4** constructs a global balanced index fund under a
+  constrained mandate.
+
+Each question starts with a short approach, followed by the code, the
+output and an interpretation of each step, and ends with a conclusion.
+
+## File construction
+
+The root project uses the folder structure provided for the exam, and
+each question folder was created with Texevier. .
 
 ``` r
-for (q in paste0("Question", 1:4)) {
-  Texevier::create_template(directory = "Questions", template_name = q, open_project = FALSE)
-}
+Texevier::create_template(directory = "Questions", template_name = "Question1", open_project = FALSE)   # research report
+Texevier::create_template(directory = "Questions", template_name = "Question2", open_project = FALSE)   # research report
+Texevier::create_template(directory = "Questions", template_name = "Question3", open_project = FALSE)   # slides
+Texevier::create_template(directory = "Questions", template_name = "Question4", open_project = FALSE)   # research report
+```
+
+The exam data was unzipped into the root `data` folder (excluded from
+git via `.gitignore`), and the files each question needs were copied
+into that question’s own `data` folder. Each question is therefore
+self-contained: its folder holds its own `code/` and `data/` folders and
+its write-up (a Texevier PDF report for Questions 1, 2 and 4, and slides
+for Question 3), so each write-up can be built on its own. In this
+README, the functions for each question are loaded in that question’s
+first code chunk, while the main data preparation and calculations are
+written out in the code chunks; functions are used mainly for the plots
+and for the longer, repetitive procedures (such as fitting GARCH models
+or optimising portfolios at every rebalance date).
+
+## Packages
+
+``` r
+pacman::p_load(tidyverse, lubridate, glue, broom, zoo, tbl2xts, rmsfuns, RcppRoll,  # data handling and returns
+               rugarch,                                                         # GARCH (Q1, Q2)
+               quadprog, RiskPortfolios, Matrix,                                # optimisation and covariance shrinkage (Q1, Q4)
+               FactoMineR, sandwich, lmtest,                                    # PCA and Newey-West tests (Q3)
+               ggrepel, cowplot, xtable)                                        # plot labels, plot grids, LaTeX tables
 ```
 
 # Question 1: Exploring Risk and Uncertainty
 
-All functions for this question live in `Questions/Question1/code/`. The
-write-up (pdf) is `Questions/Question1/Question1.Rmd`.
-
-``` r
-pacman::p_load(tidyverse, rugarch, tbl2xts, RcppRoll, zoo, broom, xtable)
-
-list.files("Questions/Question1/code/", full.names = TRUE) %>%
-    .[grepl("[.]R$", .)] %>%
-    walk(~source(.))
-```
+Question 1 is answered in three parts that build on each other. Part A
+establishes whether local volatility has increased and where it comes
+from; Part B uses those findings to judge whether the SafeCore fund has
+navigated volatility; and Part C turns to the opportunity this
+environment creates for active managers.
 
 ## Part A: Has local volatility increased, and does it mirror the global experience?
 
 **Approach.** No single measure can show both whether local volatility
-has increased and whether it mirrors the global experience, so I build
-the evidence in layers. I start with realised volatility, which is
-model-free and shows how local and global markets have actually moved. I
-then fit GARCH models to capture what realised volatility misses: how
-long volatility shocks persist and whether bad news raises volatility
-more than good news. Finally, because the seminar’s claim is about
-*causes*, I relate local volatility to offshore uncertainty measures and
-to rand volatility to separate imported from home-grown risk.
-Throughout, I prefer simple methods backed by robustness checks, so that
-each conclusion rests on more than one piece of evidence.
+has increased and whether it mirrors the global experience, so the
+evidence is built in layers. Realised volatility comes first, as it is
+model-free and shows how local and global markets have actually moved.
+GARCH models then capture what realised volatility misses: how long
+volatility shocks persist and whether bad news raises volatility more
+than good news. Finally, because the seminar’s claim is about causes,
+local volatility is related to offshore uncertainty measures and to rand
+volatility, to separate imported from home-grown risk. Throughout,
+simple methods backed by robustness checks are preferred, so that each
+conclusion rests on more than one piece of evidence.
 
 ### Data
 
 Local index returns start in 2015, so all comparisons run from January
-2015 to September 2026. Local series are in Rands; global indexes are
-total return series in USD, which I convert to daily returns.
+2015 to September 2026. Local series are in rand; global indexes are
+total return series in US dollars, which are converted to daily returns.
 
 ``` r
+# Functions for this question (plots and the longer, repetitive procedures)
+list.files("Questions/Question1/code/", full.names = TRUE) %>% .[grepl("[.]R$", .)] %>% walk(~source(.))
+
 Idx_Daily            <- read_rds("data/Index_Returns_Daily.rds")
 MSCI                 <- read_rds("data/MSCI_Indexes.rds")
 Global_Idx           <- read_rds("data/Global_Indexes_USD.rds")
@@ -56,69 +100,79 @@ Local_Cncy_Vol_Index <- read_rds("data/LCL_Currency_Vol_Index.rds")
 Gl_Cncy_Vol_Index    <- read_rds("data/Global_Currency_Vol_Index.rds")
 Commods              <- read_rds("data/Commodities.rds")
 
-# Local (Capped SWIX, Top 40, Mid, Small) + global (ACWI, EM, S&P 500, Euro Stoxx, Nikkei)
-Eq_Returns <- Q1A_Equity_Returns(Idx_Daily, MSCI, Global_Idx)
-Eq_Returns %>% count(Region, Name) %>% knitr::kable()
+# Local indexes (already daily returns, in rand)
+Local <- Idx_Daily %>%
+    filter(Tickers %in% c("J433", "J200", "J201", "J202")) %>%
+    mutate(Name = recode(Name, "MidCaps" = "Mid Caps", "SmallCaps" = "Small Caps"),
+           Region = "Local (ZAR)") %>%
+    select(date, Name, Returns, Region)
+
+# Global indexes (total return indexes in USD -> daily returns)
+Global <- bind_rows(MSCI %>% filter(Name %in% c("MSCI_ACWI", "MSCI_EM")),
+                    Global_Idx %>% filter(Name %in% c("SPXT", "Euro_Stoxx", "Nikkei_225"))) %>%
+    group_by(Name) %>% arrange(date) %>%
+    mutate(Returns = TRI / lag(TRI) - 1) %>%
+    ungroup() %>%
+    filter(!is.na(Returns), Returns != 0) %>%      # the S&P 500 TRI repeats prices on US holidays
+    mutate(Name = recode(Name, "MSCI_ACWI" = "MSCI ACWI", "MSCI_EM" = "MSCI EM", "SPXT" = "S&P 500",
+                         "Euro_Stoxx" = "Euro Stoxx 50", "Nikkei_225" = "Nikkei 225"),
+           Region = "Global (USD)") %>%
+    select(date, Name, Returns, Region)
+
+Eq_Returns <- bind_rows(Local, Global) %>% filter(date >= ymd(20150101))
 ```
 
-| Region       | Name          |    n |
-|:-------------|:--------------|-----:|
-| Global (USD) | Euro Stoxx 50 | 3016 |
-| Global (USD) | MSCI ACWI     | 3064 |
-| Global (USD) | MSCI EM       | 3065 |
-| Global (USD) | Nikkei 225    | 2868 |
-| Global (USD) | S&P 500       | 2952 |
-| Local (ZAR)  | Capped SWIX   | 2935 |
-| Local (ZAR)  | Mid Caps      | 2935 |
-| Local (ZAR)  | Small Caps    | 2935 |
-| Local (ZAR)  | Top 40        | 2935 |
+The panel holds four local indexes (Capped SWIX, Top 40, Mid Caps and
+Small Caps) and five global indexes (MSCI ACWI, MSCI EM, the S&P 500,
+the Euro Stoxx 50 and the Nikkei 225), with between about 2,870 and
+3,060 daily observations each.
 
 Insights from data exploration:
 
-- The global and Europe policy uncertainty (EPU) indexes are **monthly**
+- The global and Europe policy uncertainty (EPU) indexes are monthly
   values repeated on every day, so any comparison with EPU is done at
   monthly frequency.
 - The SAVI (USDZAR vol) index is quoted as a decimal (e.g. 0.15) instead
   of a percentage on 109 days (mostly Mar-Jun 2021), a units error that
-  I rescale in `Q1A_Uncertainty_Levels()`.
-- The S&P 500 TRI carries US holidays forward as flat days, which I
-  remove.
+  is rescaled in `Q1A_Uncertainty_Levels()`.
+- The S&P 500 TRI carries US holidays forward as flat days, which are
+  removed.
 
-To give the time-series plots context, I shade five market events. They
-are deliberately split into two SA-specific political shocks and three
-global shocks, because comparing how local vs global volatility reacted
-to each type is a simple test of whether local volatility is home-grown
-or imported (see the event study below).
+To give the time-series plots context, five market events are shaded:
+Nenegate (December 2015), the March 2017 cabinet reshuffle and junk
+downgrade, the COVID-19 crash (2020), the Ukraine war and oil shock
+(2022) and the US tariff shock (April 2025). They are deliberately split
+into two SA-specific political shocks and three global shocks, because
+comparing how local and global volatility reacted to each type is a
+simple test of whether local volatility is home-grown or imported (see
+the event study below).
 
-``` r
-Q1_Events %>% knitr::kable()
-```
-
-| Label                    | Start      | End        | Type   |  ID |
-|:-------------------------|:-----------|:-----------|:-------|----:|
-| Nenegate                 | 2015-12-09 | 2015-12-31 | Local  |   1 |
-| Cabinet reshuffle & junk | 2017-03-30 | 2017-04-28 | Local  |   2 |
-| COVID-19 crash           | 2020-02-20 | 2020-06-30 | Global |   3 |
-| Ukraine war & oil shock  | 2022-02-24 | 2022-06-30 | Global |   4 |
-| US tariff shock          | 2025-04-02 | 2025-04-30 | Global |   5 |
-
-### Realised volatility
+### 1. Realised volatility
 
 Rolling 63-day standard deviation of daily returns, annualised with
-$`\sqrt{252}`$. I use 63 trading days (about one quarter) as a
+$`\sqrt{252}`$. A window of 63 trading days (about one quarter) is a
 compromise: a shorter window (e.g. 21 days) is very noisy, while a
 longer one (e.g. 252 days) smooths away exactly the short volatility
-episodes I want to detect.
+episodes this section aims to detect.
 
 ``` r
-Roll_Vols <- Roll_Vol(Eq_Returns, Window = 63)
+Roll_Vols <- Eq_Returns %>%
+    group_by(Name) %>% arrange(date) %>%
+    mutate(RollVol = RcppRoll::roll_sd(Returns, n = 63, fill = NA, align = "right") * sqrt(252)) %>%
+    ungroup() %>%
+    filter(!is.na(RollVol))
+
 Plot_Roll_Vol(Roll_Vols)
 ```
 
 ![](README_files/figure-gfm/Q1A-rollvol-1.png)<!-- -->
 
 ``` r
-Cal_Vols <- Calendar_Vol(Eq_Returns)
+Cal_Vols <- Eq_Returns %>%
+    mutate(Year = year(date)) %>%
+    group_by(Region, Name, Year) %>%
+    summarise(AnnVol = sd(Returns) * sqrt(252), N = n(), .groups = "drop")
+
 Plot_Calendar_Vol(Cal_Vols)
 ```
 
@@ -130,64 +184,49 @@ rather than a steady upward trend. The calendar view highlights a recent
 divergence: in 2026 (to September) Capped SWIX vol is about 21%, far
 above MSCI ACWI (about 12%) and the S&P 500, and much closer to MSCI EM
 (about 25%). So in the most recent period, local volatility mirrors the
-*emerging market* experience rather than the developed market one. Small
+emerging market experience rather than the developed market one. Small
 caps are consistently the least volatile local index, which reflects
 their low liquidity (stale prices smooth measured volatility) rather
 than lower true risk.
 
-To answer “has vol increased?” more formally, I compare average rolling
-vol before and after 2020, and the share of days each index spends above
-its own long-run 80th percentile of vol. Using each index’s *own*
-percentile makes “high vol” a relative definition, so a naturally more
-volatile market (e.g. the Nikkei) is not automatically flagged as
-high-vol all the time. The second table drops the COVID crash (mid-Feb
-to July 2020) to check that the result is not driven by one outlier
-episode.
+To answer “has vol increased?” more formally, average rolling vol before
+and after 2020 is compared, together with the share of days each index
+spends above its own long-run 80th percentile of vol. Using each index’s
+own percentile makes “high vol” a relative definition, so a naturally
+more volatile market (e.g. the Nikkei) is not automatically flagged as
+high-vol all the time. The comparison is repeated without the COVID
+crash (mid-February to July 2020) to check that the result is not driven
+by one outlier episode.
 
 ``` r
-Vol_Regime_Table(Roll_Vols) %>% knitr::kable(digits = 3)
+Covid <- as.Date(c("2020-02-15", "2020-07-31"))
+
+Regimes <- bind_rows(
+        Roll_Vols %>% mutate(Sample = "Full sample"),
+        Roll_Vols %>% filter(!(date >= Covid[1] & date <= Covid[2])) %>% mutate(Sample = "Excluding the COVID crash")) %>%
+    group_by(Sample, Region, Name) %>%
+    mutate(HighVolCut = quantile(RollVol, 0.8),                         # each index's own 80th percentile
+           Period = ifelse(date < ymd(20200101), "Pre-2020", "Post-2020")) %>%
+    group_by(Sample, Region, Name, Period) %>%
+    summarise(AvgVol = mean(RollVol), HighVolDays = mean(RollVol > HighVolCut), .groups = "drop")
+
+Plot_Vol_Regimes(Regimes)
 ```
 
-| Region | Name | AvgVol_Pre | AvgVol_Post | VolChange | HighVolDays_Pre | HighVolDays_Post |
-|:---|:---|---:|---:|---:|---:|---:|
-| Global (USD) | Nikkei 225 | 0.171 | 0.229 | 0.057 | 0.097 | 0.272 |
-| Global (USD) | S&P 500 | 0.126 | 0.176 | 0.049 | 0.114 | 0.261 |
-| Global (USD) | Euro Stoxx 50 | 0.161 | 0.208 | 0.047 | 0.091 | 0.277 |
-| Global (USD) | MSCI ACWI | 0.104 | 0.141 | 0.037 | 0.116 | 0.260 |
-| Global (USD) | MSCI EM | 0.137 | 0.169 | 0.033 | 0.100 | 0.271 |
-| Local (ZAR) | Small Caps | 0.098 | 0.141 | 0.043 | 0.066 | 0.295 |
-| Local (ZAR) | Mid Caps | 0.139 | 0.179 | 0.039 | 0.099 | 0.271 |
-| Local (ZAR) | Top 40 | 0.159 | 0.190 | 0.031 | 0.137 | 0.245 |
-| Local (ZAR) | Capped SWIX | 0.154 | 0.175 | 0.022 | 0.151 | 0.235 |
-
-``` r
-Vol_Regime_Table(Roll_Vols, Exclude = as.Date(c("2020-02-15", "2020-07-31"))) %>% knitr::kable(digits = 3)
-```
-
-| Region | Name | AvgVol_Pre | AvgVol_Post | VolChange | HighVolDays_Pre | HighVolDays_Post |
-|:---|:---|---:|---:|---:|---:|---:|
-| Global (USD) | Nikkei 225 | 0.171 | 0.222 | 0.051 | 0.120 | 0.261 |
-| Global (USD) | Euro Stoxx 50 | 0.161 | 0.194 | 0.033 | 0.134 | 0.250 |
-| Global (USD) | S&P 500 | 0.126 | 0.156 | 0.030 | 0.157 | 0.232 |
-| Global (USD) | MSCI EM | 0.137 | 0.161 | 0.024 | 0.126 | 0.256 |
-| Global (USD) | MSCI ACWI | 0.104 | 0.127 | 0.022 | 0.165 | 0.227 |
-| Local (ZAR) | Small Caps | 0.098 | 0.125 | 0.027 | 0.069 | 0.299 |
-| Local (ZAR) | Mid Caps | 0.139 | 0.163 | 0.023 | 0.102 | 0.274 |
-| Local (ZAR) | Top 40 | 0.159 | 0.176 | 0.017 | 0.156 | 0.233 |
-| Local (ZAR) | Capped SWIX | 0.154 | 0.160 | 0.007 | 0.169 | 0.224 |
+![](README_files/figure-gfm/Q1A-regimes-1.png)<!-- -->
 
 **Interpretation:** Including COVID, every index is more volatile after
 2020 (Capped SWIX average vol rises from 15.4% to 17.5%). The robustness
 check changes the story, though: excluding the COVID crash, Capped SWIX
 average vol barely moves (15.4% to 16.0%), while the share of days in a
 high-vol state still rises from 17% to 22%. Local volatility has
-therefore not shifted to a permanently higher *level*; instead,
-volatility *episodes* have become more frequent. The rise is larger for
-Mid and Small Caps (high-vol days more than quadrupling for Small Caps,
-from about 7% to 30%) and larger in developed markets (S&P 500 +3.0pp,
-Nikkei +5.1pp excluding COVID) than for the Capped SWIX itself.
+therefore not shifted to a permanently higher level; instead, volatility
+episodes have become more frequent. The rise is larger for Mid and Small
+Caps (high-vol days more than quadrupling for Small Caps, from about 7%
+to 30%) and larger in developed markets (S&P 500 +3.0pp, Nikkei +5.1pp
+excluding COVID) than for the Capped SWIX itself.
 
-### Event study: home-grown or imported volatility?
+### 2. Event study: home-grown or imported volatility?
 
 For each shaded event: how much did rolling vol rise (peak during the
 event + 30 days, minus the level just before it)? If SA-specific events
@@ -196,17 +235,23 @@ local vol is a mix of home-grown and imported shocks, and the size of
 each tells us which matters more.
 
 ``` r
-Event_Vol_Table(Roll_Vols, Q1_Events, Names = c("Capped SWIX", "MSCI EM", "MSCI ACWI")) %>%
-    knitr::kable(digits = 3)
+Event_Rise <- Q1_Events %>%
+    mutate(Res = map2(Start, End, function(s, e) {
+        Roll_Vols %>%
+            filter(Name %in% c("Capped SWIX", "MSCI EM", "MSCI ACWI")) %>%
+            group_by(Name) %>%
+            summarise(Pre  = last(RollVol[date < s]),                    # level just before the event
+                      Peak = max(RollVol[date >= s & date <= e + 30]),   # peak during the event + 30 days
+                      .groups = "drop")
+    })) %>%
+    unnest(Res) %>%
+    mutate(Rise = Peak - Pre) %>%
+    select(Event = Label, Start, Type, Name, Pre, Peak, Rise)
+
+Plot_Event_Vol(Event_Rise)
 ```
 
-| Event                    | Type   | Capped SWIX | MSCI EM | MSCI ACWI |
-|:-------------------------|:-------|------------:|--------:|----------:|
-| Nenegate                 | Local  |       0.058 |   0.030 |     0.019 |
-| Cabinet reshuffle & junk | Local  |       0.002 |   0.014 |     0.011 |
-| COVID-19 crash           | Global |       0.393 |   0.261 |     0.417 |
-| Ukraine war & oil shock  | Global |       0.077 |   0.112 |     0.077 |
-| US tariff shock          | Global |       0.086 |   0.090 |     0.103 |
+![](README_files/figure-gfm/Q1A-eventvol-1.png)<!-- -->
 
 **Interpretation:** Nenegate was a home-grown shock: local vol rose by
 about 5.8 percentage points, roughly three times the rise in MSCI ACWI
@@ -219,7 +264,7 @@ The *large* volatility episodes in the local market are therefore
 imported, while local political shocks have been smaller and
 shorter-lived.
 
-### Does local move with global? Rolling correlation
+### 3. Does local move with global? Rolling correlation
 
 Weekly returns, 52-week window. Weekly data is used because the JSE
 closes before the US market opens, which biases daily correlations with
@@ -228,7 +273,7 @@ prices on day *t+1*).
 
 ``` r
 Roll_Cors <- Roll_Cor_Weekly(Eq_Returns, LocalName = "Capped SWIX",
-                             GlobalNames = c("MSCI ACWI", "MSCI EM", "S&P 500"))
+                             GlobalNames = c("MSCI ACWI", "MSCI EM", "S&P 500"), Window = 52)
 Plot_Roll_Cor(Roll_Cors)
 ```
 
@@ -245,59 +290,65 @@ diversification gives the least protection in global sell-offs. The
 recent fall in the correlation with MSCI EM (to about 0.5) suggests that
 part of the 2026 volatility is SA- or region-specific.
 
-### Conditional volatility: GARCH
+### 4. Conditional volatility: GARCH
 
-First, I confirm there is volatility clustering (ARCH effects), then
-compare GARCH specifications, then extract the conditional volatility
-from the preferred model.
+The first step is to confirm that there is volatility clustering (ARCH
+effects); GARCH specifications are then compared, and the conditional
+volatility is extracted from the preferred model.
 
 ``` r
-# Ljung-Box on squared returns: H0 = no ARCH effects
-ARCH_Test_Table(Eq_Returns, Names = c("Capped SWIX", "MSCI ACWI", "MSCI EM")) %>% knitr::kable(digits = 4)
+# Ljung-Box test on squared returns: H0 = no ARCH effects (no volatility clustering)
+Eq_Returns %>%
+    filter(Name %in% c("Capped SWIX", "MSCI ACWI", "MSCI EM")) %>%
+    group_by(Name) %>%
+    summarise(`Ljung-Box statistic (12 lags)` = Box.test(Returns^2, type = "Ljung-Box", lag = 12)$statistic,
+              `p-value` = format.pval(Box.test(Returns^2, type = "Ljung-Box", lag = 12)$p.value, digits = 3)) %>%
+    rename(Index = Name) %>%
+    knitr::kable(digits = 0)
 ```
 
-| Name        |  LB_Stat | P_Value |
-|:------------|---------:|--------:|
-| Capped SWIX | 2616.650 |       0 |
-| MSCI ACWI   | 2901.016 |       0 |
-| MSCI EM     | 1084.319 |       0 |
+| Index       | Ljung-Box statistic (12 lags) | p-value |
+|:------------|------------------------------:|:--------|
+| Capped SWIX |                          2617 | \<2e-16 |
+| MSCI ACWI   |                          2901 | \<2e-16 |
+| MSCI EM     |                          1084 | \<2e-16 |
 
 The test statistics are very large (over 1,000 for all three series)
-with p-values of essentially zero, so I reject the null of no ARCH
-effects: large moves tend to follow large moves. A constant-variance
+with p-values of essentially zero, so the null of no ARCH effects is
+rejected: large moves tend to follow large moves. A constant-variance
 model would therefore misstate risk, which justifies modelling
 volatility with GARCH.
 
-For the error distribution I use the skewed Student-t, because equity
+The skewed Student-t is used for the error distribution, because equity
 returns are fat-tailed (more extreme days than a normal distribution
 allows) and negatively skewed (crashes are larger than rallies). An
-AR(1) mean is included, as in Practical 6, to absorb any small
-first-order autocorrelation in returns.
+AR(1) mean is included to absorb any small first-order autocorrelation
+in returns.
 
 ``` r
-# Lower AIC / BIC = better fit
-Garch_Model_Compare(Eq_Returns, Names = c("Capped SWIX", "MSCI ACWI", "MSCI EM")) %>% knitr::kable(digits = 4)
+# Fit sGARCH, gjrGARCH and eGARCH to each series and rank them by AIC (lower = better)
+Garch_Compare <- Garch_Model_Compare(Eq_Returns, Names = c("Capped SWIX", "MSCI ACWI", "MSCI EM"))
+
+Garch_Compare %>%
+    select(Index = Name, Model, AIC) %>%
+    pivot_wider(names_from = Model, values_from = AIC) %>%
+    mutate(`Lowest AIC` = c("sGARCH", "gjrGARCH", "eGARCH")[apply(cbind(sGARCH, gjrGARCH, eGARCH), 1, which.min)]) %>%
+    knitr::kable(digits = 4)
 ```
 
-| Name        | Model    |     AIC |     BIC |
-|:------------|:---------|--------:|--------:|
-| Capped SWIX | sGARCH   | -6.3950 | -6.3808 |
-| Capped SWIX | gjrGARCH | -6.4135 | -6.3972 |
-| Capped SWIX | eGARCH   | -6.4184 | -6.4021 |
-| MSCI ACWI   | sGARCH   | -7.0883 | -7.0745 |
-| MSCI ACWI   | gjrGARCH | -7.1269 | -7.1112 |
-| MSCI ACWI   | eGARCH   | -7.1339 | -7.1181 |
-| MSCI EM     | sGARCH   | -6.5318 | -6.5181 |
-| MSCI EM     | gjrGARCH | -6.5548 | -6.5390 |
-| MSCI EM     | eGARCH   | -6.5530 | -6.5373 |
+| Index       |  sGARCH | gjrGARCH |  eGARCH | Lowest AIC |
+|:------------|--------:|---------:|--------:|:-----------|
+| Capped SWIX | -6.3950 |  -6.4135 | -6.4184 | eGARCH     |
+| MSCI ACWI   | -7.0883 |  -7.1269 | -7.1339 | eGARCH     |
+| MSCI EM     | -6.5318 |  -6.5548 | -6.5530 | gjrGARCH   |
 
 The asymmetric models (gjrGARCH, eGARCH) beat the standard GARCH for all
 three series. eGARCH has a marginally lower AIC for some series, but the
 differences are in the third decimal place, so the choice between the
-two asymmetric models makes little practical difference. I use the
-GJR-GARCH(1,1) because its leverage parameter ($`\gamma`$) is easy to
-interpret: it measures how much more volatility rises after a negative
-shock than after a positive one.
+two asymmetric models makes little practical difference. The
+GJR-GARCH(1,1) is preferred because its leverage parameter ($`\gamma`$)
+is easy to interpret: it measures how much more volatility rises after a
+negative shock than after a positive one.
 
 ``` r
 Garch_Out <- Garch_Fit_Sigma(Eq_Returns, Names = c("Capped SWIX", "MSCI ACWI", "MSCI EM"), Model = "gjrGARCH")
@@ -329,16 +380,16 @@ days (one month). Local shocks fade faster than shocks to MSCI ACWI
 conditional volatility plot confirms the realised-vol picture: the local
 and global series spike at the same times.
 
-### What drives local volatility? Offshore uncertainty
+### 5. What drives local volatility? Offshore uncertainty
 
 Monthly panel of local and global GARCH vol, implied vol (VIX, V2X,
 VXEEM), policy uncertainty (EPU), US bond vol (MOVE), Brent oil realised
-vol, and FX vol (SAVI for USDZAR, JPM global FX vol). I work at monthly
-frequency because the global EPU index only updates monthly, and monthly
-averages also filter out day-to-day noise. In the plots, all series are
-standardised (z-scores) so that measures on very different scales
-(e.g. EPU around 100-600 vs VIX around 10-80) can be compared on one
-axis.
+vol, and FX vol (SAVI for USDZAR, JPM global FX vol). The analysis works
+at monthly frequency because the global EPU index only updates monthly,
+and monthly averages also filter out day-to-day noise. In the plots, all
+series are standardised (z-scores) so that measures on very different
+scales (e.g. EPU around 100-600 vs VIX around 10-80) can be compared on
+one axis.
 
 ``` r
 Unc_Levels <- Q1A_Uncertainty_Levels(Uncertainty_Indexes, Implied_Vol, Local_Cncy_Vol_Index,
@@ -376,43 +427,46 @@ standard deviation rise in local vol”. Model 2 adds local currency vol
 drivers.
 
 ``` r
-Driver_Regs <- Q1A_Driver_Regressions(Monthly_Panel)
-Driver_Regs$Coefs %>% knitr::kable(digits = 3)
+# Standardise every series and give the columns lm-friendly names
+Z <- Monthly_Panel %>%
+    mutate(across(-date, ~ as.numeric(scale(.x)))) %>%
+    rename_with(make.names)
+
+Reg_Offshore <- lm(Capped.SWIX.Vol ~ VIX + EPU.Global + MOVE..US.bond.vol. + Oil.Vol, data = Z)
+Reg_With_SAVI <- update(Reg_Offshore, . ~ . + SAVI.USDZAR.vol)
+
+bind_rows(tidy(Reg_Offshore) %>% mutate(Model = "Offshore only", R2 = summary(Reg_Offshore)$r.squared),
+          tidy(Reg_With_SAVI) %>% mutate(Model = "Offshore + SAVI", R2 = summary(Reg_With_SAVI)$r.squared)) %>%
+    filter(term != "(Intercept)") %>%
+    mutate(term = recode(term, "EPU.Global" = "EPU Global", "MOVE..US.bond.vol." = "MOVE (US bond vol)",
+                         "Oil.Vol" = "Oil vol", "SAVI.USDZAR.vol" = "SAVI (USDZAR vol)")) %>%
+    select(Model, Variable = term, Beta = estimate, SE = std.error, t = statistic, p = p.value, R2) %>%
+    knitr::kable(digits = 3)
 ```
 
-| term               | estimate | std.error | statistic | p.value | Model           |
-|:-------------------|---------:|----------:|----------:|--------:|:----------------|
-| VIX                |    0.637 |     0.058 |    10.902 |   0.000 | Offshore only   |
-| EPU.Global         |   -0.189 |     0.048 |    -3.980 |   0.000 | Offshore only   |
-| MOVE..US.bond.vol. |   -0.072 |     0.046 |    -1.548 |   0.124 | Offshore only   |
-| Oil.Vol            |    0.374 |     0.055 |     6.837 |   0.000 | Offshore only   |
-| VIX                |    0.621 |     0.061 |    10.202 |   0.000 | Offshore + SAVI |
-| EPU.Global         |   -0.164 |     0.055 |    -2.991 |   0.003 | Offshore + SAVI |
-| MOVE..US.bond.vol. |   -0.062 |     0.047 |    -1.321 |   0.189 | Offshore + SAVI |
-| Oil.Vol            |    0.365 |     0.055 |     6.604 |   0.000 | Offshore + SAVI |
-| SAVI.USDZAR.vol    |    0.051 |     0.054 |     0.943 |   0.347 | Offshore + SAVI |
-
-``` r
-Driver_Regs$Fit %>% knitr::kable(digits = 3)
-```
-
-| Model           |    R2 |   N |
-|:----------------|------:|----:|
-| Offshore only   | 0.728 | 141 |
-| Offshore + SAVI | 0.730 | 141 |
+| Model           | Variable           |   Beta |    SE |      t |     p |    R2 |
+|:----------------|:-------------------|-------:|------:|-------:|------:|------:|
+| Offshore only   | VIX                |  0.637 | 0.058 | 10.902 | 0.000 | 0.728 |
+| Offshore only   | EPU Global         | -0.189 | 0.048 | -3.980 | 0.000 | 0.728 |
+| Offshore only   | MOVE (US bond vol) | -0.072 | 0.046 | -1.548 | 0.124 | 0.728 |
+| Offshore only   | Oil vol            |  0.374 | 0.055 |  6.837 | 0.000 | 0.728 |
+| Offshore + SAVI | VIX                |  0.621 | 0.061 | 10.202 | 0.000 | 0.730 |
+| Offshore + SAVI | EPU Global         | -0.164 | 0.055 | -2.991 | 0.003 | 0.730 |
+| Offshore + SAVI | MOVE (US bond vol) | -0.062 | 0.047 | -1.321 | 0.189 | 0.730 |
+| Offshore + SAVI | Oil vol            |  0.365 | 0.055 |  6.604 | 0.000 | 0.730 |
+| Offshore + SAVI | SAVI (USDZAR vol)  |  0.051 | 0.054 |  0.943 | 0.347 | 0.730 |
 
 **Interpretation:** The offshore measures alone explain about 73% of the
 monthly variation in local volatility. The VIX is the dominant driver (a
 1 sd rise goes with a 0.64 sd rise in local vol), followed by oil
 volatility (0.37 sd), and both are highly significant. MOVE is not
-significant once the VIX is included. Global EPU enters with a
-*negative* sign, but because EPU and the VIX are correlated, this
-coefficient picks up the part of EPU that is *not* already reflected in
-market fear, and should not be read as “uncertainty lowers volatility”.
-Adding local currency volatility (SAVI) barely changes the fit (R² from
-0.728 to 0.730) and is insignificant: once global fear and oil are
-accounted for, the rand adds no extra information about equity
-volatility.
+significant once the VIX is included. Global EPU enters with a negative
+sign, but because EPU and the VIX are correlated, this coefficient picks
+up the part of EPU that is not already reflected in market fear, and
+should not be read as “uncertainty lowers volatility”. Adding local
+currency volatility (SAVI) barely changes the fit (R² from 0.728 to
+0.730) and is insignificant: once global fear and oil are accounted for,
+the rand adds no extra information about equity volatility.
 
 ### Part A conclusion
 
@@ -428,8 +482,8 @@ are spilling into local equities, the evidence is mixed: oil volatility
 clearly feeds through, but policy uncertainty only seems to matter once
 it turns into global market fear (a higher VIX). For a local equity
 fund, the practical takeaway is that the risk worth protecting against
-is a global sell-off rather than a rand shock, which is the lens I use
-to evaluate SafeCore in Part B.
+is a global sell-off rather than a rand shock, which is the lens used to
+evaluate SafeCore in Part B.
 
 **Limitations.** The regressions show associations, not causal effects.
 Monthly volatility measures are persistent, so the residuals are likely
@@ -444,15 +498,15 @@ itself.
 
 **Approach.** SafeCore is built without any explicit view on volatility,
 so the question is whether it nonetheless behaves like a risk ballast,
-and if not, why. I first establish *whether* there is a problem, by
-looking at how the fund behaves when markets fall (not just its average
-volatility), using a rebuilt Low Vol index as a reference for what a
-true ballast looks like. Afterwhich, I find *where* its volatility comes
-from, since a stock’s share of risk can differ greatly from its weight.
-Finally, I build my own momentum and low-volatility scores and combine
-them with the third party’s into portfolio-level factor exposures, to
-explain *why* the fund behaves as it does. The Capped SWIX (J433) is the
-benchmark throughout.
+and if not, why. The first step establishes whether there is a problem,
+by looking at how the fund behaves when markets fall (not just its
+average volatility), using a rebuilt Low Vol index as a reference for
+what a true ballast looks like. Thereafter, the analysis finds where its
+volatility comes from, since a stock’s share of risk can differ greatly
+from its weight. Finally, own momentum and low-volatility scores are
+built and combined with the third party’s into portfolio-level factor
+exposures, to explain why the fund behaves as it does. The Capped SWIX
+(J433) is the benchmark throughout.
 
 ### Data and portfolio construction
 
@@ -464,20 +518,30 @@ Factor_Scores <- read_rds("data/Factor_Scores.rds")
 Hedge_Plays   <- read_rds("data/Currency_Hedge_Plays.rds")
 STeFI         <- read_rds("data/STeFI_Index.rds")
 
-SC_Holdings <- Q1B_SafeCore_Holdings(SafeCore, Index_Const)
+# Fill missing sectors from the super-sector in the index constituent file
+Sector_Map <- Index_Const %>%
+    filter(SuperSector != "", !is.na(SuperSector)) %>%
+    group_by(Tickers) %>% filter(date == max(date)) %>% ungroup() %>%
+    distinct(Tickers, Fill = SuperSector) %>% distinct(Tickers, .keep_all = TRUE)
+
+SC_Holdings <- SafeCore %>%
+    filter(date >= ymd(20141201)) %>%                  # stock returns only start in 2015
+    left_join(Sector_Map, by = "Tickers") %>%
+    mutate(Sector = coalesce(Sector, Fill, "Other")) %>%
+    select(date, Tickers, Sector, weight = Weight)
 ```
 
-Data checks prior construction:
+Data checks before construction:
 
 - SafeCore’s holdings go back to 2007, but stock returns only start in
   2015, so the analysis runs from 2015.
-- Holdings weights sum to 79-100% each month, which are rescaled to
-  100%. In every month at least 94.7% of the fund’s weight has matching
-  stock returns, so the rescaling only affects a few small holdings.
+- Holdings weights sum to 79-100% each month, and are rescaled to 100%.
+  In every month at least 94.7% of the fund’s weight has matching stock
+  returns, so the rescaling only affects a few small holdings.
 - A few holdings have no sector (e.g. Valterra Platinum, Pan African
-  Resources). I fill these from the super-sector in the index
-  constituent file rather than leaving them as “Other”, which would
-  cloud resource risk.
+  Resources). These are filled from the super-sector in the index
+  constituent file rather than left as “Other”, which would cloud
+  resource risk.
 - The stock return file contains some extreme daily moves (above 50%) in
   illiquid small caps. These matter for the factor scores, which is why
   those are capped (see below).
@@ -488,17 +552,41 @@ next trading day (`lag_weights = TRUE`) and then drift with prices until
 the next rebalance.
 
 ``` r
-SafeCore_Rets <- Build_Portfolio(SC_Holdings, Stock_Rets, PortName = "SafeCore")
-LowVol_Rets   <- Q1B_LowVol_Rebuild(Index_Const, Stock_Rets)        # quarterly rebalance
-LowVol_Daily  <- Q1B_LowVol_Daily(Index_Const)                      # daily weights (check only)
+# Rescale weights to 100% over the stocks that have returns in the following month
+Has_Rets <- Stock_Rets %>% mutate(YM = floor_date(date, "month")) %>% distinct(Tickers, YM)
 
-B_Panel <- Q1B_Return_Panel(SafeCore_Rets, LowVol_Rets, Idx_Daily)
+SC_W <- SC_Holdings %>%
+    mutate(YM = floor_date(date, "month") %m+% months(1)) %>%
+    semi_join(Has_Rets, by = c("Tickers", "YM")) %>%
+    group_by(date) %>% mutate(weight = weight / sum(weight)) %>% ungroup()
+
+W_xts <- SC_W %>% select(date, Tickers, weight) %>% tbl_xts(cols_to_xts = weight, spread_by = Tickers)
+W_xts[is.na(W_xts)] <- 0
+
+R_xts <- Stock_Rets %>%
+    filter(Tickers %in% unique(SC_W$Tickers), date > min(SC_W$date)) %>%
+    select(date, Tickers, Returns) %>%
+    tbl_xts(cols_to_xts = Returns, spread_by = Tickers)
+R_xts[is.na(R_xts)] <- 0
+
+SafeCore_Port <- rmsfuns::Safe_Return.portfolio(R = R_xts[, colnames(W_xts)], weights = W_xts,
+                                                lag_weights = TRUE, geometric = TRUE)
+SafeCore_Rets <- tibble(date = as.Date(zoo::index(SafeCore_Port)), Name = "SafeCore",
+                        Returns = as.numeric(SafeCore_Port))
+
+# Low Vol index rebuilt from its constituents (quarterly rebalance) and with daily weights (check only)
+LowVol_Rets  <- Q1B_LowVol_Rebuild(Index_Const, Stock_Rets)
+LowVol_Daily <- Q1B_LowVol_Daily(Index_Const)
+
+B_Panel <- bind_rows(SafeCore_Rets, LowVol_Rets,
+                     Idx_Daily %>% filter(Tickers %in% c("J433", "J200")) %>% select(date, Name, Returns)) %>%
+    filter(date >= ymd(20150101))
 ```
 
 The Low Vol index (STXLVLJ433) only has returns from 2024, but its
-constituents and weights are available from August 2020. I rebuild it
+constituents and weights are available from August 2020. It is rebuilt
 with weights reset at the end of March, June, September and December.
-Before relying on the rebuild for 2020-2023, I check it against the
+Before relying on the rebuild for 2020-2023, it is checked against the
 actual index where the two overlap:
 
 ``` r
@@ -518,33 +606,28 @@ benchmark.
 
 ### 1. Did SafeCore navigate volatility?
 
-The scorecard summarises risk and return. I report it over the full
-period, and over the period since September 2020 when the Low Vol index
-is also available, so that every fund is judged on the same window. The
-Sharpe ratio uses STeFI (the local cash index) as the risk-free rate.
+The scorecard summarises risk and return over the full period, and over
+the period since September 2020 when the Low Vol index is also
+available, so that every fund is judged on the same window. The Sharpe
+ratio uses STeFI (the local cash index) as the risk-free rate.
 
 ``` r
-Q1B_Scorecard(B_Panel %>% filter(Name != "Low Vol"), STeFI, as.Date("2015-01-01"), as.Date("2026-09-30")) %>%
+bind_rows(
+    Q1B_Scorecard(B_Panel %>% filter(Name != "Low Vol"), STeFI, ymd(20150101), ymd(20260930)) %>% mutate(Period = "2015-2026"),
+    Q1B_Scorecard(B_Panel, STeFI, ymd(20200901), ymd(20260930)) %>% mutate(Period = "Sep 2020-2026")) %>%
+    select(Period, everything()) %>%
     knitr::kable(digits = 3)
 ```
 
-| Fund | Ann. return | Ann. vol | Sharpe | Max drawdown | Beta | Tracking error | Info. ratio |
-|:---|---:|---:|---:|---:|---:|---:|---:|
-| Capped SWIX | 0.087 | 0.178 | 0.102 | -0.417 | 1.000 | 0.000 | NA |
-| SafeCore | 0.114 | 0.179 | 0.255 | -0.391 | 0.953 | 0.056 | 0.486 |
-| Top 40 | 0.110 | 0.187 | 0.225 | -0.346 | 0.988 | 0.064 | 0.376 |
-
-``` r
-Q1B_Scorecard(B_Panel, STeFI, as.Date("2020-09-01"), as.Date("2026-09-30")) %>%
-    knitr::kable(digits = 3)
-```
-
-| Fund | Ann. return | Ann. vol | Sharpe | Max drawdown | Beta | Tracking error | Info. ratio |
-|:---|---:|---:|---:|---:|---:|---:|---:|
-| Capped SWIX | 0.162 | 0.164 | 0.589 | -0.141 | 1.000 | 0.000 | NA |
-| Low Vol | 0.124 | 0.151 | 0.388 | -0.147 | 0.876 | 0.051 | -0.740 |
-| SafeCore | 0.176 | 0.169 | 0.655 | -0.185 | 1.003 | 0.039 | 0.357 |
-| Top 40 | 0.161 | 0.181 | 0.528 | -0.172 | 1.062 | 0.049 | -0.026 |
+| Period | Fund | Ann. return | Ann. vol | Sharpe | Max drawdown | Beta | Tracking error | Info. ratio |
+|:---|:---|---:|---:|---:|---:|---:|---:|---:|
+| 2015-2026 | Capped SWIX | 0.087 | 0.178 | 0.102 | -0.417 | 1.000 | 0.000 | NA |
+| 2015-2026 | SafeCore | 0.114 | 0.179 | 0.255 | -0.391 | 0.953 | 0.056 | 0.486 |
+| 2015-2026 | Top 40 | 0.110 | 0.187 | 0.225 | -0.346 | 0.988 | 0.064 | 0.376 |
+| Sep 2020-2026 | Capped SWIX | 0.162 | 0.164 | 0.589 | -0.141 | 1.000 | 0.000 | NA |
+| Sep 2020-2026 | Low Vol | 0.124 | 0.151 | 0.388 | -0.147 | 0.876 | 0.051 | -0.740 |
+| Sep 2020-2026 | SafeCore | 0.176 | 0.169 | 0.655 | -0.185 | 1.003 | 0.039 | 0.357 |
+| Sep 2020-2026 | Top 40 | 0.161 | 0.181 | 0.528 | -0.172 | 1.062 | 0.049 | -0.026 |
 
 **Interpretation:** SafeCore has been a good fund in return terms: since
 2015 it returned 11.4% a year against 8.7% for the Capped SWIX, with an
@@ -574,21 +657,33 @@ Plot_Vol_Ratio(Q1B_Vol_Ratio(B_Panel))
 outperformance came from: it pulled ahead of the benchmark in 2016-2018
 and again from 2020, and since 2020 it has tracked the Top 40 very
 closely. The drawdown panel shows that in every major sell-off SafeCore
-fell about as far as the market. The volatility ratio makes the point
-directly: SafeCore was less volatile than the Capped SWIX in only about
-a quarter of rolling one-year windows (mostly 2015-2016 and 2020), and
-has been slightly more volatile since 2021. The rebuilt Low Vol index,
-by contrast, was smoother than the benchmark in every window, typically
-by about 8%.
+fell about as far as the market. The rolling volatility chart makes the
+point directly (the gap between each fund and the benchmark is shaded
+green where the fund was smoother and pink where it was more volatile):
+SafeCore was less volatile than the Capped SWIX in only about a quarter
+of rolling one-year windows (mostly 2015-2016 and 2020), and has been
+slightly more volatile since 2021. The rebuilt Low Vol index, by
+contrast, was smoother than the benchmark in every window, typically by
+about 8%.
 
-To look at how each fund participates in market moves, I compute upside
-and downside capture per calendar year: the fund’s average return on
-days the benchmark rose (fell), divided by the benchmark’s average
-return on those days. A good ballast captures less of the downside than
-of the upside, which puts it above the dashed 45-degree line.
+To look at how each fund participates in market moves, upside and
+downside capture are computed per calendar year: the fund’s average
+return on days the benchmark rose (fell), divided by the benchmark’s
+average return on those days. A good ballast captures less of the
+downside than of the upside, which puts it above the dashed 45-degree
+line.
 
 ``` r
-Plot_Capture(Q1B_Capture(B_Panel))
+Capture <- B_Panel %>%
+    filter(Name != "Capped SWIX") %>%
+    inner_join(B_Panel %>% filter(Name == "Capped SWIX") %>% select(date, Bench = Returns), by = "date") %>%
+    mutate(Year = year(date)) %>%
+    group_by(Name, Year) %>%
+    filter(n() > 120) %>%                                                   # skip part-years
+    summarise(UpCapture   = mean(Returns[Bench > 0]) / mean(Bench[Bench > 0]),
+              DownCapture = mean(Returns[Bench < 0]) / mean(Bench[Bench < 0]), .groups = "drop")
+
+Plot_Capture(Capture)
 ```
 
 ![](README_files/figure-gfm/Q1B-capture-1.png)<!-- -->
@@ -602,9 +697,12 @@ and down moves. That is the signature of a genuine low-beta strategy: it
 reduces both sides symmetrically, rather than offering “free” downside
 protection.
 
-Next, stress tests: the cumulative return in each Part A event window
-and in the five highest-VIX months that are not already inside an event
-(so the same crisis is not counted twice).
+The last two charts focus on turbulent markets. The first is a set of
+stress tests: the cumulative return in each Part A event window and in
+the five highest-VIX months that are not already inside an event (so the
+same crisis is not counted twice). The second groups every month by its
+average VIX into calm, normal and stressed terciles, and compares each
+fund’s return with the benchmark’s.
 
 ``` r
 Stress_Windows <- Q1B_Stress_Windows(Q1_Events, Implied_Vol, N_VIX = 5)
@@ -612,10 +710,6 @@ Plot_Stress(Q1B_Stress_Returns(B_Panel, Stress_Windows))
 ```
 
 ![](README_files/figure-gfm/Q1B-stress-1.png)<!-- -->
-
-Finally, performance by volatility regime: each month is classified by
-its average VIX into calm, normal and stressed terciles, and I compare
-each fund’s return with the benchmark’s.
 
 ``` r
 Plot_VIX_Regimes(Q1B_VIX_Regimes(B_Panel, Implied_Vol))
@@ -637,46 +731,54 @@ every stressed month.
 
 ### 2. Where does SafeCore’s volatility come from?
 
-At each month-end I decompose the fund’s variance into each stock’s
+At each month-end, the fund’s variance is decomposed into each stock’s
 contribution: with weights $`w`$ and covariance matrix $`\Sigma`$, stock
 $`i`$ contributes $`w_i (\Sigma w)_i / w'\Sigma w`$, and the
 contributions sum to 100%. Unlike the weight, this accounts for how
-volatile each stock is *and* how it co-moves with the rest of the fund.
+volatile each stock is and how it co-moves with the rest of the fund.
 The covariance matrix uses the past year of daily returns and is shrunk
-towards a structured target (Ledoit-Wolf, as in Practical 3): with about
-40 stocks and 252 observations the sample covariance matrix is noisy,
-and shrinkage makes the contributions more stable.
+towards a structured target (Ledoit-Wolf): with about 40 stocks and 252
+observations the sample covariance matrix is noisy, and shrinkage makes
+the contributions more stable.
 
 ``` r
 Risk_Contrib <- Q1B_Risk_Contrib(SC_Holdings, Stock_Rets)
 
-Plot_Sector_Risk(Risk_Contrib)
+# Latest month: each sector's share of the fund's weight vs its share of the fund's risk
+Plot_Risk_Waffle(Risk_Contrib)
 ```
 
 ![](README_files/figure-gfm/Q1B-riskcontrib-1.png)<!-- -->
 
 ``` r
+Plot_Sector_Risk(Risk_Contrib)
+```
+
+![](README_files/figure-gfm/Q1B-riskcontrib-time-1.png)<!-- -->
+
+``` r
 Plot_Weight_vs_Risk(Risk_Contrib, TopN = 10)
 ```
 
-![](README_files/figure-gfm/Q1B-riskcontrib-2.png)<!-- -->
+![](README_files/figure-gfm/Q1B-riskcontrib-time-2.png)<!-- -->
 
 **Interpretation:** Resources are by far the main source of SafeCore’s
-risk, and this has become more prevalent recently. In August 2026
-resources made up 40% of the fund’s weight but 68% of its risk. Two gold
-miners, AngloGold Ashanti (12% weight, 28% of risk) and Gold Fields (8%
-weight, 17% of risk), account for almost half of the fund’s volatility,
-and Valterra Platinum adds another 10%. Banks and industrials (Standard
-Bank, Absa, FirstRand, MTN, Naspers) contribute less risk than their
-weight: they act as diversifiers within the fund. The fund’s estimated
-volatility (from the covariance matrix) is about 20% a year, above its
-long-run average of about 18%.
+risk, and this has become more prevalent recently. The waffle charts
+make the gap visible: in August 2026 resources made up 40% of the fund’s
+weight but 68% of its risk. Two gold miners, AngloGold Ashanti (12%
+weight, 28% of risk) and Gold Fields (8% weight, 17% of risk), account
+for almost half of the fund’s volatility, and Valterra Platinum adds
+another 10%. Banks and industrials (Standard Bank, Absa, FirstRand, MTN,
+Naspers) contribute less risk than their weight: they act as
+diversifiers within the fund. The fund’s estimated volatility (from the
+covariance matrix) is about 20% a year, above its long-run average of
+about 18%.
 
 Two structural features can amplify this: concentration and currency
 exposure. Concentration is measured by the effective number of stocks,
-$`1/\sum w_i^2`$ (equal to $`N`$ for an equally weighted portfolio). For
-the currency profile I use the third party’s rand-hedge classification,
-which is only available at the latest date, so this is a snapshot.
+$`1/\sum w_i^2`$ (equal to $`N`$ for an equally weighted portfolio). The
+currency profile uses the third party’s rand-hedge classification, which
+is only available at the latest date, so it is a snapshot.
 
 ``` r
 Plot_Conc_Hedge(Q1B_Effective_N(SC_Holdings, Index_Const),
@@ -715,44 +817,61 @@ Both are converted to cross-sectional z-scores each month and capped at
 Stocks need a full 6-month history to be scored.
 
 ``` r
-Own_Scores <- Q1B_Own_Scores(Stock_Rets, Factor_Scores)
+Own_Scores  <- Q1B_Own_Scores(Stock_Rets, Factor_Scores)
 Score_Agree <- Q1B_Score_Agreement(Own_Scores, Factor_Scores)
 
+# Average monthly rank correlation between the own and the vendor scores
+Score_Agree %>% group_by(Comparison) %>% summarise(AvgRankCor = mean(RankCor)) %>%
+    mutate(Result = glue("{Comparison}: average rank correlation {round(AvgRankCor, 2)}")) %>%
+    pull(Result) %>% cat(sep = "\n")
+```
+
+    ## Low Vol (own) vs vendor Vol. Sensitivity: average rank correlation 0.1
+    ## Momentum: own vs vendor: average rank correlation 0.61
+
+``` r
 Plot_Score_Compare(Score_Agree, Own_Scores, Factor_Scores, SC_Holdings)
 ```
 
 ![](README_files/figure-gfm/Q1B-own-scores-1.png)<!-- -->
 
-**Interpretation:** These momentum score agree well with the vendor’s:
+**Interpretation:** The momentum scores agree well with the vendor’s:
 the monthly rank correlation averages about 0.6. The largest
 disagreements among SafeCore’s holdings are the gold and platinum miners
 (Pan African, AngloGold, Valterra, Gold Fields), which the vendor still
-scores as high-momentum while our 6-month measure does not, which
+scores as high-momentum while the 6-month measure does not, which
 suggests the vendor uses a longer look-back that still captures their
-earlier rally. Our low-volatility score, however, is essentially
+earlier rally. The low-volatility score, however, is essentially
 unrelated to the vendor’s “Volatility Sensitivity” (average rank
 correlation of about 0.1, sometimes negative). Further checks show that
 the vendor score is also barely related to realised volatility (-0.18)
 or to market beta (-0.08), so it measures something different, most
-likely how sensitive a stock is to *changes* in market volatility rather
+likely how sensitive a stock is to changes in market volatility rather
 than how volatile it is. For the question at hand (“is SafeCore a
-low-volatility fund?”) our own price-based score is the more direct
-measure, and the vendor’s should not be read as a low-vol score.
+low-volatility fund?”) the price-based score is the more direct measure,
+and the vendor’s should not be read as a low-vol score.
 
-**Portfolio exposures.** I combine the stock scores into portfolio-level
-(composite) scores: the weighted average score of each portfolio’s
-holdings, for SafeCore, the Capped SWIX and the four factor indexes. One
-finding shaped how I present these: the Capped SWIX scores almost
-exactly zero on every vendor factor, which means the vendor’s scores are
-benchmark-relative, while ours are standardised across all stocks. To
-put both on the same footing, I express every exposure relative to the
-Capped SWIX (“active” exposure). This also answers the more useful
-question for a manager: how does the fund differ from its benchmark?
+**Portfolio exposures.** The stock scores are combined into
+portfolio-level (composite) scores: the weighted average score of each
+portfolio’s holdings, for SafeCore, the Capped SWIX and the four factor
+indexes. One finding shaped how these are presented: the Capped SWIX
+scores almost exactly zero on every vendor factor, which means the
+vendor’s scores are benchmark-relative, while the own scores are
+standardised across all stocks. To put both on the same footing, every
+exposure is expressed relative to the Capped SWIX (“active” exposure).
+This also answers the more useful question for a manager: how does the
+fund differ from its benchmark?
 
 ``` r
-All_Scores  <- Q1B_All_Scores(Own_Scores, Factor_Scores)
-Exposures   <- Q1B_Port_Exposures(All_Scores, SC_Holdings, Index_Const)
-Active_Exp  <- Q1B_Active_Exposures(Exposures)
+All_Scores <- Q1B_All_Scores(Own_Scores, Factor_Scores)
+Exposures  <- Q1B_Port_Exposures(All_Scores, SC_Holdings, Index_Const)
+
+# Active exposure = portfolio exposure minus the Capped SWIX's exposure, factor by factor
+Active_Exp <- Exposures %>%
+    filter(Name != "Capped SWIX") %>%
+    inner_join(Exposures %>% filter(Name == "Capped SWIX") %>% select(date, Factor, BenchExp = Exposure),
+               by = c("date", "Factor")) %>%
+    mutate(Active = Exposure - BenchExp)
 
 Plot_Fingerprint(Active_Exp, Months = 12)
 ```
@@ -765,18 +884,21 @@ Plot_Factor_Drift(Active_Exp)
 
 ![](README_files/figure-gfm/Q1B-drift-1.png)<!-- -->
 
-**Interpretation:** The factor indexes behave as expected (the Momentum
-index scores highest on momentum, Value on value, Low Vol on low
-volatility), which confirms the scores are sensible. Against these
-reference points, SafeCore’s fingerprint over the last year is clear: it
-is tilted towards **momentum** (+0.21) and **earnings quality** (+0.20),
-with a mild **value** tilt (+0.10), and it has no low-volatility tilt
-(-0.06 on our score, against +0.33 for the Low Vol index). It looks like
-a quality-momentum fund, not a defensive one. The drift chart adds the
-timing: SafeCore’s momentum exposure rose sharply in 2026 while its
-low-volatility exposure turned negative. This connects the pieces: by
-following momentum, the fund has drifted into the gold miners, which is
-exactly why resources now dominate its risk.
+**Interpretation:** Each radar is one portfolio’s factor fingerprint:
+points outside the dark ring mean more exposure than the benchmark, and
+SafeCore’s shape is repeated as a dashed outline in every panel. The
+factor indexes behave as expected (the Momentum index reaches furthest
+on momentum, Value on value, Low Vol on low volatility), which confirms
+the scores are sensible. Against these reference points, SafeCore’s
+shape is closest to the Momentum and Quality indexes and furthest from
+Low Vol: it is tilted towards **momentum** (+0.21) and **earnings
+quality** (+0.20), with a mild **value** tilt (+0.10), and it has no
+low-volatility tilt (-0.06 on the own score, against +0.33 for the Low
+Vol index). It looks like a quality-momentum fund, not a defensive one.
+The drift chart adds the timing: SafeCore’s momentum exposure rose
+sharply in 2026 while its low-volatility exposure turned negative. This
+connects the pieces: by following momentum, the fund has drifted into
+the gold miners, which is exactly why resources now dominate its risk.
 
 ### Part B conclusion
 
@@ -801,21 +923,20 @@ strong markets.
 ## Part C: Alpha opportunity in the local market since 2020
 
 **Approach.** Active managers often add value when stocks behave
-differently from one another, so I measure the alpha opportunity from
+differently from one another, so the alpha opportunity is measured from
 two complementary angles: dispersion (how far apart stock returns are on
 a given day) and correlation (how much stocks move together over time).
 High dispersion with low correlation is a stock-picker’s market; low
 dispersion with high correlation is a macro-driven one where stock
-selection matters little. I combine the two into a single Alpha
-Opportunity Index, check that it lines up with the returns a ‘good’
-stock picker could actually have earned, and then relate it to the
-global macro measures from Part A. Constituent data starts in August
-2020.
+selection matters little. The two are combined into a single Alpha
+Opportunity Index, checked against the returns a ‘good’ stock picker
+could actually have earned, and then related to the global macro
+measures from Part A. Constituent data starts in August 2020.
 
-### Dispersion (cross-sectional volatility)
+### 1. Dispersion (cross-sectional volatility)
 
-Each day I compute the cross-sectional volatility (CSV) of the Capped
-SWIX constituents, both weighted and unweighted:
+Each day, the cross-sectional volatility (CSV) of the Capped SWIX
+constituents is computed, both weighted and unweighted:
 
 ``` math
 CSV^{W}_t = \sqrt{\sum_i w_{i,t-1} (R_{i,t} - \bar{R}_t)^2}, \qquad \bar{R}_t = \sum_i w_{i,t-1} R_{i,t}
@@ -828,8 +949,8 @@ measures the opportunity that matters to a manager benchmarked against
 the Capped SWIX: a large move in a stock with a tiny index weight
 changes little for such a fund. Second, the unweighted measure is
 dominated by small, illiquid stocks with erratic prices, which inflate
-dispersion without creating opportunity that can actually be
-captured.The unweighted version as included as a robustness check.
+dispersion without creating opportunity that can actually be captured.
+The unweighted version is included as a robustness check.
 
 **Data cleaning.** Two daily “returns” above 100% are corporate-action
 artefacts rather than price moves: Richemont’s shareholder warrants
@@ -840,10 +961,37 @@ weighted dispersion to about 6%, and the unweighted average for 2020 to
 several hundred percent. These two rows are dropped. It is also a good
 example of how fragile unweighted dispersion is.
 
+Because the weighted variance is a weighted sum of squared deviations,
+it can also be split exactly into a part within super-sectors (stocks
+moving differently from their own sector: the stock-picking opportunity)
+and a part between super-sectors (sectors moving differently from each
+other: the sector-allocation opportunity).
+
 ``` r
-Const_J433  <- Q1C_Constituents(Index_Const, IndexName = "Capped SWIX")
-Daily_CSV   <- Q1C_Daily_CSV(Const_J433)
-Monthly_CSV <- Q1C_Monthly_CSV(Daily_CSV)        # daily CSV is noisy, so I average per month
+# Capped SWIX constituents with previous-day weights (rescaled to 100% each day)
+Const_J433 <- Index_Const %>%
+    filter(abs(Return) <= 1, Index == "Capped SWIX") %>%      # drop the two corporate-action artefacts
+    group_by(Tickers) %>% arrange(date) %>%
+    mutate(w = lag(weight)) %>% ungroup() %>%
+    filter(!is.na(w)) %>%
+    group_by(date) %>% mutate(w = w / sum(w)) %>% ungroup()
+
+Daily_CSV <- Const_J433 %>%
+    group_by(date) %>% mutate(Rbar = sum(w * Return)) %>%                         # index return
+    group_by(date, SuperSector) %>% mutate(Rs = sum(w * Return) / sum(w)) %>%     # sector return
+    group_by(date) %>%
+    summarise(CSV_W       = sqrt(sum(w * (Return - Rbar)^2)),   # weighted CSV
+              CSV_EW      = sd(Return),                         # unweighted CSV
+              Within_Var  = sum(w * (Return - Rs)^2),           # stock-picking part
+              Between_Var = sum(w * (Rs - Rbar)^2),             # sector-allocation part
+              .groups = "drop")
+
+# Daily CSV is noisy, so it is averaged per month
+Monthly_CSV <- Daily_CSV %>%
+    mutate(date = floor_date(date, "month")) %>%
+    group_by(date) %>%
+    summarise(across(c(CSV_W, CSV_EW, Within_Var, Between_Var), mean), Days = n(), .groups = "drop") %>%
+    filter(Days >= 10)
 
 Plot_CSV(Monthly_CSV)
 ```
@@ -856,12 +1004,6 @@ steadily to a low of about 1.6% in 2024, and has risen again to about
 2.0% in 2026. The unweighted measure is consistently higher (small caps
 are noisier), and the two are correlated at 0.74, so the choice of
 measure does not change the overall pattern.
-
-Because the weighted variance is a weighted sum of squared deviations,
-it can be split exactly into a part within super-sectors (stocks moving
-differently from their own sector: the stock-picking opportunity) and a
-part between super-sectors (sectors moving differently from each other:
-the sector-allocation opportunity).
 
 ``` r
 Plot_CSV_Decomp(Monthly_CSV)
@@ -878,15 +1020,15 @@ side: resources (gold miners in particular) have moved very differently
 from financials and industrials, so getting the sector call right has
 become as important as picking stocks within sectors.
 
-### Rolling inter-constituent correlation
+### 2. Rolling inter-constituent correlation
 
-At each month-end I compute the correlation matrix of the Large Cap
-stocks over the previous 63 trading days, and keep all pairwise
-correlations. Rather than collapsing them into one average, I show their
-distribution (the median pair and the middle 50% of pairs), because this
-shows whether *all* stocks were moving together or only some. I use the
-Large Caps (about 40 stocks) because they have reliable daily prices and
-are where most institutional money sits.
+At each month-end, the correlation matrix of the Large Cap stocks is
+computed over the previous 63 trading days, and all pairwise
+correlations are kept. Rather than collapsing them into one average, the
+chart shows their distribution (the median pair and the middle 50% of
+pairs), because this shows whether all stocks were moving together or
+only some. The Large Caps (about 40 stocks) are used because they have
+reliable daily prices and are where most institutional money sits.
 
 ``` r
 Pair_Cor <- Q1C_Roll_PairCor(Index_Const, IndexName = "Large Caps", Window = 63)
@@ -903,7 +1045,7 @@ levels in 2024-2025 (around 0.18-0.19) before picking up again in 2026.
 Low correlations in 2024-2025 mean stocks were trading more on their own
 fundamentals.
 
-### Alpha opportunity: combining dispersion and correlation
+### 3. Alpha opportunity: combining dispersion and correlation
 
 Dispersion and correlation are only weakly related in this sample
 (correlation of 0.17), so they capture different aspects of the
@@ -915,7 +1057,10 @@ standardises each over the sample. A value of 0 is an average month, and
 the units are standard deviations.
 
 ``` r
-Opportunity <- Q1C_Opportunity(Monthly_CSV, Pair_Cor)
+Opportunity <- Monthly_CSV %>%
+    select(date, CSV_W) %>%
+    inner_join(Pair_Cor %>% select(date, AvgCor = Mean), by = "date") %>%
+    mutate(Opportunity = as.numeric(scale(CSV_W)) - as.numeric(scale(AvgCor)))
 
 Plot_Opp_Quadrant(Opportunity)
 ```
@@ -937,10 +1082,10 @@ were August 2022, July 2023 and January 2024, when stocks moved together
 and little apart. Overall, the alpha opportunity was weak from mid-2022
 to 2024 and has improved markedly since 2025.
 
-### Was the opportunity actually realised?
+### 4. Was the opportunity actually realised?
 
 An index like this is only useful if it lines up with returns that a
-manager could have earned. I use two “payoff” measures from the data:
+manager could have earned. Two “payoff” measures from the data are used:
 the monthly return of the best 20% of Capped SWIX stocks minus the worst
 20% (the reward for picking the right stocks), and the gap between the
 best and worst of the Value, Momentum, Quality and Low Vol indexes (the
@@ -962,13 +1107,13 @@ the index captures a real stock-selection opportunity: when it is high,
 the payoff to picking the right stocks is larger. It says less about
 style timing.
 
-### Alpha opportunity and global macro factors
+### 5. Alpha opportunity and global macro factors
 
-I relate monthly dispersion, correlation and the Alpha Opportunity Index
-to the global macro measures used in Part A. Two views: the correlation
-in the same month and in the next month (does macro stress lead the
-opportunity?), and the average dispersion and correlation when each
-macro measure is in its lowest vs highest third of months.
+Monthly dispersion, correlation and the Alpha Opportunity Index are
+related to the global macro measures used in Part A. Two views: the
+correlation in the same month and in the next month (does macro stress
+lead the opportunity?), and the average dispersion and correlation when
+each macro measure is in its lowest vs highest third of months.
 
 ``` r
 Macro_Vars  <- c("VIX", "VXEEM", "Oil Vol", "MOVE (US bond vol)", "EPU Global", "JPM Global FX vol", "SAVI USDZAR vol")
@@ -1030,7 +1175,7 @@ are sensitive to a few episodes (2022 in particular). The quintile
 spread is a foresight measure: it shows how much there was to gain, not
 what any manager actually earned.
 
-# Question 1: Overall conclusion
+## Question 1: Overall conclusion
 
 Taken together, the three parts give a consistent picture. Local
 volatility has not risen to a permanently higher level, but volatility
@@ -1050,16 +1195,6 @@ volatility as early warnings.
 
 # Question 2: Mid, Small and Large Cap Indices
 
-All functions for this question may be found in
-`Questions/Question2/code/` with the write-up in the research report
-`Questions/Question2/Question2.Rmd`.
-
-``` r
-list.files("Questions/Question2/code/", full.names = TRUE) %>%
-    .[grepl("[.]R$", .)] %>%
-    walk(~source(.))
-```
-
 **Approach.** An investor choosing between the large, mid and small cap
 indexes is really choosing between different bets on the economy,
 necessitating a comparison on three levels. First their structure: what
@@ -1076,12 +1211,23 @@ holds up when it matters.
 The size index holdings are monthly from 2007, so the structure analysis
 covers 2007-2026. Daily index returns (J200 for large caps, J201 mid
 caps, J202 small caps and J433 for the Capped SWIX) start in 2015, so
-the risk and return analysis covers 2015-2026.
+the risk and return analysis covers 2015-2026. Data already loaded for
+Question 1 (daily index returns, index constituents, stock returns,
+factor scores, rand-hedge classification and STeFI) is reused.
 
 ``` r
+# Functions for this question (plots and the longer, repetitive procedures)
+list.files("Questions/Question2/code/", full.names = TRUE) %>% .[grepl("[.]R$", .)] %>% walk(~source(.))
+
 Size_Idx    <- read_rds("data/Monthly_Index_Constituents.rds")
-Q2_Holdings <- Q2_Size_Holdings(Size_Idx, Index_Const)
-Q2_Rets     <- Q2_Index_Returns(Idx_Daily)
+Q2_Holdings <- Q2_Size_Holdings(Size_Idx, Index_Const)    # monthly holdings: sectors filled, weights rescaled
+
+# Daily index returns: large (J200), mid (J201) and small (J202) caps, and the Capped SWIX (J433)
+Q2_Rets <- Idx_Daily %>%
+    filter(Tickers %in% c("J200", "J201", "J202", "J433")) %>%
+    mutate(Name = recode(Tickers, "J200" = "Large Caps", "J201" = "Mid Caps",
+                         "J202" = "Small Caps", "J433" = "Capped SWIX")) %>%
+    select(date, Name, Returns)
 ```
 
 Data checks:
@@ -1098,6 +1244,9 @@ Data checks:
   calculations.
 
 ### 1. Structure: sector exposure, concentration and active share
+
+The first chart shows what each index holds: the weight of each
+super-sector at every month-end since 2007.
 
 ``` r
 Plot_Q2_Sectors(Q2_Sector_Mix(Q2_Holdings))
@@ -1254,7 +1403,28 @@ rolling returns are computed from monthly returns and shown relative to
 the Capped SWIX as a heat strip, where each tile is one month.
 
 ``` r
-Q2_Roll <- Q2_Rolling_Returns(Q2_Rets, Years = c(1, 3))
+# Monthly returns from daily returns
+Q2_Monthly <- Q2_Rets %>%
+    mutate(date = floor_date(date, "month")) %>%
+    group_by(Name, date) %>%
+    summarise(R = prod(1 + Returns) - 1, .groups = "drop")
+
+# Annualised 1- and 3-year rolling returns
+Q2_Roll <- map_dfr(c(1, 3), function(y) {
+    Q2_Monthly %>%
+        group_by(Name) %>% arrange(date) %>%
+        mutate(RollRet = RcppRoll::roll_prod(1 + R, n = 12 * y, fill = NA, align = "right")^(1 / y) - 1,
+               Horizon = paste0(y, "-year")) %>%
+        ungroup() %>%
+        filter(!is.na(RollRet))
+})
+
+# ...relative to the Capped SWIX over the same window
+Q2_Roll <- Q2_Roll %>%
+    left_join(Q2_Roll %>% filter(Name == "Capped SWIX") %>% select(date, Horizon, BenchRet = RollRet),
+              by = c("date", "Horizon")) %>%
+    mutate(Relative = RollRet - BenchRet)
+
 Plot_Q2_Roll_Heat(Q2_Roll)
 ```
 
@@ -1268,19 +1438,24 @@ about -18%), then led the market by up to 16% a year in the recovery of
 2021-2023 (the darkest green tiles). Mid caps lagged the Capped SWIX in
 most windows (they beat it in only about a third of them).
 
-``` r
-Q2_RR <- Q2_Risk_Return(Q2_Rets, STeFI)
-Q2_RR %>% knitr::kable(digits = 3)
-```
-
-| Name        | AnnRet | AnnVol |  MaxDD | Sharpe |
-|:------------|-------:|-------:|-------:|-------:|
-| Capped SWIX |  0.087 |  0.178 | -0.417 |  0.102 |
-| Large Caps  |  0.110 |  0.187 | -0.346 |  0.225 |
-| Mid Caps    |  0.073 |  0.174 | -0.423 |  0.030 |
-| Small Caps  |  0.103 |  0.140 | -0.513 |  0.252 |
+A single full-period summary complements the rolling view: annualised
+return against volatility, with the Sharpe ratio (STeFI as cash) and the
+maximum drawdown.
 
 ``` r
+# Annualised cash (STeFI) return over the same period, for the Sharpe ratio
+Rf <- STeFI %>%
+    filter(date >= min(Q2_Rets$date), date <= max(Q2_Rets$date)) %>%
+    summarise(Rf = prod(1 + Returns)^(252 / n()) - 1) %>% pull(Rf)
+
+Q2_RR <- Q2_Rets %>%
+    group_by(Name) %>% arrange(date) %>%
+    summarise(AnnRet = prod(1 + Returns)^(252 / n()) - 1,
+              AnnVol = sd(Returns) * sqrt(252),
+              MaxDD  = min(cumprod(1 + Returns) / cummax(cumprod(1 + Returns)) - 1),
+              .groups = "drop") %>%
+    mutate(Sharpe = (AnnRet - Rf) / AnnVol)
+
 Plot_Q2_Risk_Return(Q2_RR)
 ```
 
@@ -1312,37 +1487,29 @@ VIX_Q2  <- Implied_Vol %>% filter(Name == "VIX", date >= as.Date("2015-01-01")) 
 Strat_Months <- bind_rows(Q2_Strat_Months(SAVI_Q2, "Rand volatility (SAVI)"),
                           Q2_Strat_Months(VIX_Q2, "Global fear (VIX)"))
 Q2_Strat <- Q2_Stratify(Q2_Rets, Strat_Months)      # volatility (vs full sample) and average return per regime
-Q2_Strat %>% select(Stratifier, Regime, Name, VolRatio, AvgMonthlyRet) %>% knitr::kable(digits = 3)
+
+# Volatility in the most stressed fifth of months relative to the full sample (1.20 = 20% higher)
+Q2_Strat %>%
+    filter(Regime == "High") %>%
+    select(`Stress measure` = Stratifier, Name, VolRatio) %>%
+    pivot_wider(names_from = Name, values_from = VolRatio) %>%
+    knitr::kable(digits = 2)
 ```
 
-| Stratifier             | Regime | Name        | VolRatio | AvgMonthlyRet |
-|:-----------------------|:-------|:------------|---------:|--------------:|
-| Global fear (VIX)      | High   | Capped SWIX |    1.332 |         0.013 |
-| Global fear (VIX)      | High   | Large Caps  |    1.318 |         0.018 |
-| Global fear (VIX)      | High   | Mid Caps    |    1.304 |         0.014 |
-| Global fear (VIX)      | High   | Small Caps  |    1.388 |         0.017 |
-| Global fear (VIX)      | Low    | Capped SWIX |    0.772 |         0.008 |
-| Global fear (VIX)      | Low    | Large Caps  |    0.774 |         0.010 |
-| Global fear (VIX)      | Low    | Mid Caps    |    0.839 |         0.007 |
-| Global fear (VIX)      | Low    | Small Caps  |    0.745 |         0.009 |
-| Rand volatility (SAVI) | High   | Capped SWIX |    1.214 |        -0.001 |
-| Rand volatility (SAVI) | High   | Large Caps  |    1.181 |         0.003 |
-| Rand volatility (SAVI) | High   | Mid Caps    |    1.195 |         0.010 |
-| Rand volatility (SAVI) | High   | Small Caps  |    1.156 |         0.000 |
-| Rand volatility (SAVI) | Low    | Capped SWIX |    0.911 |         0.022 |
-| Rand volatility (SAVI) | Low    | Large Caps  |    0.912 |         0.022 |
-| Rand volatility (SAVI) | Low    | Mid Caps    |    0.902 |         0.019 |
-| Rand volatility (SAVI) | Low    | Small Caps  |    0.823 |         0.015 |
+| Stress measure         | Capped SWIX | Large Caps | Mid Caps | Small Caps |
+|:-----------------------|------------:|-----------:|---------:|-----------:|
+| Global fear (VIX)      |        1.33 |       1.32 |     1.30 |       1.39 |
+| Rand volatility (SAVI) |        1.21 |       1.18 |     1.19 |       1.16 |
 
 ``` r
-Plot_Q2_Strat_Box(Q2_Strat_Monthly(Q2_Rets, Strat_Months))
+Plot_Q2_Strat_Ridges(Q2_Strat_Monthly(Q2_Rets, Strat_Months))
 ```
 
 ![](README_files/figure-gfm/Q2-strat-1.png)<!-- -->
 
-**Interpretation:** The box plots show the whole spread of monthly
-outcomes, not only the averages. Rand stress is clearly bad for local
-equities: in the calmest fifth of months for the rand, the median
+**Interpretation:** The ridgelines show the whole distribution of
+monthly outcomes, not only the averages. Rand stress is clearly bad for
+local equities: in the calmest fifth of months for the rand, the median
 monthly return was about 1.7-2.9% for every index, but in the most
 stressed fifth the Capped SWIX fell in 55% of months (median -0.5%), and
 large and small caps did little better. Mid caps held up best, falling
@@ -1350,10 +1517,10 @@ in only 38% of rand-stress months with a median return of +1.5%. The
 table shows that volatility rises by a similar 15-20% in all indexes in
 rand-stress months, while global stress (VIX) raises it by 30-40%, most
 for small caps relative to their normal level. Average returns are
-actually higher in high-VIX months, but the much wider boxes show why:
-these months contain both the worst falls and the sharp rebounds that
-follow sell-offs (e.g. April-May 2020), so this is volatility, not
-protection.
+actually higher in high-VIX months, but the much wider distributions
+show why: these months contain both the worst falls and the sharp
+rebounds that follow sell-offs (e.g. April-May 2020), so this is
+volatility, not protection.
 
 ### 5. Beyond size: the hidden style and currency bets
 
@@ -1378,14 +1545,18 @@ Plot_Q2_Hidden_Bets(Q2_FE, Q2_HP)
 
 ``` r
 # Is the SA size effect a global one? (annual premium and correlation with the global spread)
-Q2_Global_Size(Idx_Daily, MSCI) %>% knitr::kable(digits = 3)
+Q2_Global_Size(Idx_Daily, MSCI) %>%
+    transmute(Spread,
+              `Annual premium` = sprintf("%+.1f%%", AnnPremium * 100),
+              `Correlation with the global spread` = ifelse(grepl("^SA", Spread), sprintf("%.2f", CorWithGlobal), "-")) %>%
+    knitr::kable()
 ```
 
-| Spread                         | AnnPremium | CorWithGlobal |
-|:-------------------------------|-----------:|--------------:|
-| SA small minus large           |     -0.006 |         0.093 |
-| SA mid minus large             |     -0.032 |         0.168 |
-| Global small & mid minus world |     -0.020 |         1.000 |
+| Spread | Annual premium | Correlation with the global spread |
+|:---|:---|:---|
+| SA small minus large | -0.6% | 0.09 |
+| SA mid minus large | -3.2% | 0.17 |
+| Global small & mid minus world | -2.0% | \- |
 
 **Interpretation:** Size turns out to be a proxy for style. Large caps
 sit close to the benchmark on every factor. Mid caps are tilted towards
@@ -1436,15 +1607,6 @@ hide significant crash risk.
 
 # Question 3: Portfolio Return Comparison (ABC Fund)
 
-All functions for this question are in `Questions/Question3/code/`. The
-output is a PowerPoint deck, `Questions/Question3/Question3.Rmd`.
-
-``` r
-list.files("Questions/Question3/code/", full.names = TRUE) %>%
-    .[grepl("[.]R$", .)] %>%
-    walk(~source(.))
-```
-
 **Approach.** Active managers are increasingly asked to justify their
 fees by showing what they offer beyond the market, so a strong case for
 any fund rests on how it compares with its peers. Four questions frame
@@ -1453,17 +1615,32 @@ beta, and does ABC offer something else? Second, how different are the
 drivers of ABC’s returns from those of the industry? Third, how has ABC
 performed relative to peers over time? And, finally, does ABC really do
 well when market dispersion is high? Each claim is tested against the
-data.
+data. The results are presented to the client as slides (in
+`Questions/Question3/`); this section contains the analysis behind it.
 
 ### Data
 
 ``` r
+# Functions for this question (plots and the longer, repetitive procedures)
+list.files("Questions/Question3/code/", full.names = TRUE) %>% .[grepl("[.]R$", .)] %>% walk(~source(.))
+
 Active_Managers <- read_rds("data/Active_Managers.rds")
 ABC_Fund        <- read_rds("data/ABC_Fund.rds")
 
-Q3_Funds_M <- Q3_Funds(Active_Managers, ABC_Fund)     # peers (winsorised) + ABC, monthly
-Q3_Bench_M <- Q3_Bench(Idx_Daily)                     # Capped SWIX, monthly
-Q3_Cash_M  <- Q3_Cash(STeFI)                          # STeFI, monthly
+# Peer returns, winsorised each month at the cross-sectional 1st and 99th percentiles
+Peers <- Active_Managers %>%
+    mutate(YM = format(date, "%Y-%m")) %>%
+    group_by(YM) %>%
+    mutate(Ret = pmin(pmax(Returns, quantile(Returns, 0.01)), quantile(Returns, 0.99))) %>%
+    ungroup() %>%
+    transmute(YM, Name, Ret, Group = "Peer")
+
+Q3_Funds_M <- bind_rows(Peers,
+                        ABC_Fund %>% transmute(YM = format(date, "%Y-%m"), Name = "ABC Fund", Ret = Returns, Group = "ABC Fund")) %>%
+    mutate(date = as.Date(paste0(YM, "-01")))
+
+Q3_Bench_M <- Q3_Bench(Idx_Daily)     # Capped SWIX, monthly
+Q3_Cash_M  <- Q3_Cash(STeFI)          # STeFI, monthly
 ```
 
 Data checks:
@@ -1523,12 +1700,6 @@ onto them afterwards, like any outside fund.
 
 ``` r
 Q3_PCA_Out <- Q3_PCA(Q3_Funds_M, Months = 60)
-round(Q3_PCA_Out$VarShare[1:3], 3)       # share of peer return variation explained by PC1-PC3
-```
-
-    ## [1] 0.824 0.035 0.027
-
-``` r
 Plot_Q3_Drivers(Q3_PCA_Out)
 ```
 
@@ -1543,30 +1714,30 @@ ABC. In portfolio terms, ABC is one of the few funds that adds a
 genuinely different return stream to a client portfolio, rather than
 another version of the same market exposure.
 
-To present the same analysis in the standard form used in Practical 4,
-the PCA is repeated with `FactoMineR::PCA`, adding ABC as a
-*supplementary* variable: its correlation with each component is
-computed, but it plays no part in building them. The scree plot and the
-variable correlation circle summarise the result.
+To present the same analysis in its standard form, the PCA is repeated
+with `FactoMineR::PCA`, adding ABC as a supplementary variable: its
+correlation with each component is computed, but it plays no part in
+building them. The scree plot and the variable correlation circle
+summarise the result.
 
 ``` r
 Q3_PCA_F <- Q3_PCA_Prac(Q3_Funds_M, Months = 60)
-round(Q3_PCA_F$eig[1:5, ], 2)              # eigenvalues and % of variance
+# Eigenvalues and % of variance for the first five dimensions, with ABC's correlation with each
+# (ABC is a supplementary variable: it plays no part in building the dimensions)
+tibble(Dimension         = paste("Dim", 1:5),
+       Eigenvalue        = Q3_PCA_F$eig[1:5, 1],
+       `% of variance`   = Q3_PCA_F$eig[1:5, 2],
+       `ABC correlation` = Q3_PCA_F$quanti.sup$coord[1, 1:5]) %>%
+    knitr::kable(digits = 2)
 ```
 
-    ##        eigenvalue percentage of variance cumulative percentage of variance
-    ## comp 1      98.10                  82.44                             82.44
-    ## comp 2       4.19                   3.52                             85.96
-    ## comp 3       3.16                   2.66                             88.61
-    ## comp 4       2.03                   1.70                             90.32
-    ## comp 5       1.34                   1.13                             91.44
-
-``` r
-Q3_PCA_F$quanti.sup$coord[, 1:2]          # ABC's correlation with components 1 and 2
-```
-
-    ##     Dim.1     Dim.2 
-    ## 0.7685422 0.2986783
+| Dimension | Eigenvalue | % of variance | ABC correlation |
+|:----------|-----------:|--------------:|----------------:|
+| Dim 1     |      98.10 |         82.44 |            0.77 |
+| Dim 2     |       4.19 |          3.52 |            0.30 |
+| Dim 3     |       3.16 |          2.66 |            0.02 |
+| Dim 4     |       2.03 |          1.70 |            0.28 |
+| Dim 5     |       1.34 |          1.13 |           -0.16 |
 
 ``` r
 Plot_Q3_PCA_Prac(Q3_PCA_F)
@@ -1602,19 +1773,6 @@ Plot_Q3_Rank(Q3_Rank)
 
 ``` r
 Q3_Score <- Q3_Scorecard(Q3_Funds_M, Q3_Bench_M, Q3_Cash_M)
-Q3_Score %>% filter(Group == "ABC Fund") %>% select(Measure, Value, Pctile) %>% knitr::kable(digits = 3)
-```
-
-| Measure           |  Value | Pctile |
-|:------------------|-------:|-------:|
-| Annual return     |  0.119 | 89.041 |
-| Volatility        |  0.111 | 90.411 |
-| Sharpe ratio      |  0.482 | 91.781 |
-| Information ratio |  0.207 | 87.671 |
-| Max drawdown      | -0.137 | 95.205 |
-| Market beta       |  0.537 | 96.575 |
-
-``` r
 Plot_Q3_Scorecard(Q3_Score)
 ```
 
@@ -1700,12 +1858,13 @@ means it is unlikely to be luck.
 
 ``` r
 Q3_Alpha_Out <- Q3_Alpha(Q3_Funds_M, Q3_Bench_M, Q3_Cash_M)
-Q3_Alpha_Out %>% filter(Group == "ABC Fund") %>% knitr::kable(digits = 4)
+Q3_Alpha_Out %>%
+    filter(Group == "ABC Fund") %>%
+    mutate(Result = glue("ABC Fund: alpha {sprintf('%.1f', Alpha * 100)}% a year, Newey-West t = {round(t_Alpha, 2)} (p = {round(p_Alpha, 3)}), beta {round(Beta, 2)}, {Months} months")) %>%
+    pull(Result) %>% cat()
 ```
 
-| Name     | Group    |  Alpha | t_Alpha | p_Alpha |   Beta | Months |
-|:---------|:---------|-------:|--------:|--------:|-------:|-------:|
-| ABC Fund | ABC Fund | 0.0363 |  1.7611 |  0.0806 | 0.5392 |    130 |
+    ## ABC Fund: alpha 3.6% a year, Newey-West t = 1.76 (p = 0.081), beta 0.54, 130 months
 
 ``` r
 Plot_Q3_Alpha(Q3_Alpha_Out)
@@ -1734,6 +1893,341 @@ and it protects capital when markets fall. The manager’s dispersion
 argument is not supported and should be replaced by the
 downside-protection message. ABC’s alpha of about 3.6% a year, higher
 than 98% of peers and significant at the 10% level, suggests this record
-reflects skill rather than luck. The deck also flags the honest caveats:
-ABC lags in the strongest rallies, as in 2025, and benchmark-based
-comparisons only start in 2015.
+reflects skill rather than luck. The slides also flag the honest
+caveats: ABC lags in the strongest rallies, as in 2025, and
+benchmark-based comparisons only start in 2015.
+
+# Question 4: Portfolio Construction (Global Balanced Index Fund)
+
+**Approach.** A balanced index fund should combine asset classes by
+rules rather than by manager judgement, so the fund is built with a
+quadratic optimiser that enforces every limit in the mandate at each
+quarterly rebalance. Because return forecasts are much less reliable
+than risk estimates, three strategies are compared: one that ignores
+expected returns entirely (minimum variance), one that uses them
+(maximum Sharpe ratio) and one that uses no estimates at all (naive
+equal weight). The analysis also goes beyond building the fund by asking
+what the mandate costs in return, which of its rules actually shape the
+portfolio, and whether optimisation pays for its extra trading.
+
+### Data and the universe
+
+The universe has 14 monthly series in five groups, chosen to give the
+fund a broad, traded building block in each part of the mandate:
+
+- **Local equity:** Large Caps (J200) and Mid Caps (J201), the Value and
+  Momentum factor indexes (as the brief suggests), and SA listed
+  property.
+- **Local bonds:** the ALBI and inflation-linked government bonds.
+- **Global equity:** MSCI USA, Europe and Emerging Markets.
+- **Global bonds:** US and German 10-year government bond return
+  indexes, built from yields (below).
+- **Commodities:** gold and the Bloomberg Commodity Index.
+
+Data checks:
+
+- The question paper refers to `MAA.rds` and `msci.rds`, which are not
+  in the data folder; the equivalent MSCI, bond-yield, commodity and
+  local yield-index files are used instead.
+- The euro-area yield series is identical to the German series
+  (correlation 1, every value equal), so only the German series is used.
+- No rand-dollar exchange rate is available, so global assets are
+  measured in US dollars. This effectively treats global exposure as
+  currency-hedged, a limitation discussed in the conclusion.
+- The local Low Volatility index only starts in 2024 and can never meet
+  the five-year rule, so the two factor indexes used are Value and
+  Momentum.
+
+Before any optimisation, the chart places each building block by its own
+long-run return and risk.
+
+``` r
+# Functions for this question (plots and the longer, repetitive procedures)
+list.files("Questions/Question4/code/", full.names = TRUE) %>% .[grepl("[.]R$", .)] %>% walk(~source(.))
+
+Bond_Yields <- read_rds("data/Global_Bond_Yields.rds")
+LCL_Yield   <- read_rds("data/Monthly_LCL_Yield_Indexes.rds")
+
+Q4_Univ   <- Q4_Universe(MSCI, Bond_Yields, Commods, LCL_Yield, Idx_Daily)   # 14 assets, monthly returns
+Q4_Cash_M <- Q4_Cash(STeFI)
+
+Plot_Q4_Universe(Q4_Univ)
+```
+
+![](README_files/figure-gfm/Q4-data-1.png)<!-- -->
+
+**Interpretation:** Local bonds stand out: the ALBI and inflation-linked
+bonds earned about 10% and 8% a year with only 6-8% volatility, the best
+return per unit of risk in the universe. Equities cluster at 15-21%
+volatility with returns of roughly 7-13%, global government bonds earned
+only about 2% a year in US dollars, and broad commodities earned nothing
+over the period while gold did well. This already points to the main
+tension in the mandate: an optimiser will want local bonds, but the
+mandate caps bonds at 25% (Section 2).
+
+### Building a bond return index from yields
+
+The global bond data contains yields, not returns. A constant-maturity
+10-year bond is simulated: each month a 10-year par bond is bought (so
+its coupon equals that month’s yield), repriced a month later at the new
+yield with 10 - 1/12 years remaining, and credited with a month of
+coupon:
+
+``` math
+R_t = \frac{P(y_t;\, c = y_{t-1},\, n = 119/12) + 100\, y_{t-1}/12}{100} - 1
+```
+
+Repricing the full stream of cash flows, rather than using a duration
+approximation, captures convexity. If the yield does not change, the
+return is simply $`y/12`$, and the pricing formula is written to handle
+the zero and negative yields seen in Germany between 2015 and 2021.
+
+``` r
+Q4_Bonds <- Q4_Bond_TRI(Bond_Yields)
+Plot_Q4_Bonds(Q4_Bonds)
+```
+
+![](README_files/figure-gfm/Q4-bonds-1.png)<!-- -->
+
+**Interpretation:** The constructed indexes behave as bond returns
+should: they rose steadily as yields fell towards 2020 (and German
+yields turned negative), then fell sharply when yields jumped in 2022.
+Over the full sample they returned about 2.5% a year for the US and 1.7%
+for Germany, close to the average yields of 3.0% and 1.8%, which is a
+useful sanity check on the construction.
+
+### Estimation and the optimiser
+
+The brief requires at least ten years of data for the covariance and
+return estimates, data from 2010 onwards, and no assets with less than
+five years of history. These rules are applied as follows:
+
+- **Expanding window from January 2010.** The first rebalance is
+  December 2019, the first date with a full ten years of data, so the
+  out-of-sample backtest runs from January 2020.
+- **Eligibility.** At each rebalance only assets with at least 60 months
+  of returns can be held. Large and Mid Caps (which start in 2015)
+  become eligible exactly at the first rebalance, Momentum in 2022 and
+  Value in 2023.
+- **Covariance.** Assets with shorter histories would otherwise force
+  the whole window to shrink, so correlations are estimated pairwise and
+  the covariance matrix is shrunk towards a constant-correlation target
+  (Ledoit and Wolf, 2004) with an intensity of 0.3, then forced to be
+  positive definite. Shrinkage reduces the estimation noise that makes
+  optimised weights unstable.
+- **Expected returns.** Historical averages are noisy, so they are
+  shrunk halfway towards the cross-sectional average.
+- **Constraints.** Fully invested and long-only, single asset at most
+  35%, bonds at most 25%, equities at most 75%, commodities at most 15%
+  and global assets at most 60%, all entered as linear constraints in
+  `quadprog::solve.QP`.
+
+The three strategies:
+
+- **Minimum variance:** the lowest-risk portfolio the mandate allows.
+- **Maximum Sharpe ratio:** the constrained frontier is traced by
+  varying risk aversion, and the portfolio with the highest expected
+  excess return over cash per unit of risk is chosen.
+- **Naive (equal weight):** the feasible portfolio closest to equal
+  weights, i.e. equal weighting adjusted only as much as the mandate
+  requires.
+
+``` r
+Q4_Reb     <- Q4_Rebalance(Q4_Univ, Q4_Cash_M, First = "2019-12")
+Q4_W       <- Q4_Weights(Q4_Reb, Q4_Univ)
+
+# Check that every mandate limit holds at every rebalance
+Q4_W %>% group_by(YM, Strategy) %>%
+    summarise(Total = sum(Weight), MaxSingle = max(Weight), Bonds = sum(Weight[Class == "Bonds"]),
+              Equity = sum(Weight[Class == "Equity"]), Commodities = sum(Weight[Class == "Commodities"]),
+              Global = sum(Weight[Region == "Global"]), .groups = "drop") %>%
+    summarise(across(Total:Global, max)) %>%
+    pivot_longer(everything(), names_to = "Limit", values_to = "Largest at any rebalance") %>%
+    mutate(Limit = recode(Limit, Total = "Total weight", MaxSingle = "Single asset", Bonds = "Bonds",
+                          Equity = "Equities", Commodities = "Commodities", Global = "Global assets"),
+           `Mandate limit` = c(1, 0.35, 0.25, 0.75, 0.15, 0.60)) %>%
+    knitr::kable(digits = 3)
+```
+
+| Limit         | Largest at any rebalance | Mandate limit |
+|:--------------|-------------------------:|--------------:|
+| Total weight  |                     1.00 |          1.00 |
+| Single asset  |                     0.35 |          0.35 |
+| Bonds         |                     0.25 |          0.25 |
+| Equities      |                     0.75 |          0.75 |
+| Commodities   |                     0.15 |          0.15 |
+| Global assets |                     0.60 |          0.60 |
+
+Every limit holds at every rebalance, and each cap is reached by at
+least one strategy: the mandate actively shapes the portfolios, which
+the next two sections examine.
+
+### 1. What does the mandate cost?
+
+The efficient frontier at the latest rebalance is traced twice: once
+with all the mandate’s limits, and once with only the long-only rule.
+
+``` r
+Q4_Fr <- Q4_Latest_Frontier(Q4_Univ, Q4_Cash_M, Q4_W)
+Plot_Q4_Frontier(Q4_Fr$Mandate, Q4_Fr$Free, Q4_Fr$Points, Q4_Fr$Assets)
+```
+
+![](README_files/figure-gfm/Q4-frontier-1.png)<!-- -->
+
+**Interpretation:** The shaded gap between the two frontiers is the cost
+of the mandate: about 0.3-0.5 percentage points of expected return at
+the same level of risk, and a fall in the best achievable Sharpe ratio
+from 0.43 to 0.38. More importantly, the mandate removes the low-risk
+end of the frontier altogether. Without it, the least risky portfolio
+has a volatility below 5%; with it, nothing below about 9% is possible,
+because capping bonds at 25% and commodities at 15% means at least 60%
+must be in equities. The unconstrained maximum-Sharpe portfolio would
+hold about 71% in local bonds (47% ALBI and 24% inflation-linked), so
+for a fund called “balanced” the bond cap is the costly rule.
+
+### 2. Which rules actually shape the portfolio?
+
+`solve.QP` returns a Lagrange multiplier for every constraint. A
+positive multiplier, or shadow price, means the constraint is binding:
+relaxing it would improve the objective. Tracking these over time shows
+which rules of the mandate are doing the work.
+
+``` r
+Q4_Bind <- Q4_Binding(Q4_Reb)
+Plot_Q4_Binding(Q4_Bind)
+```
+
+![](README_files/figure-gfm/Q4-binding-1.png)<!-- -->
+
+**Interpretation:** The 25% bond cap binds at every one of the 27
+rebalances, for all three strategies: whatever the method, the fund
+would like to hold more bonds than the mandate allows. The
+minimum-variance fund also presses against the commodity cap and the 60%
+global limit throughout, because global bonds and commodities have low
+correlations with equities and are its preferred diversifiers. The
+maximum-Sharpe fund is pinned at the 35% single-asset cap on MSCI USA at
+every rebalance, so it is the single-asset limit, not an asset-class
+limit, that stops it from concentrating in US equities. For the naive
+fund the commodity cap stops binding in 2023, once the Momentum and
+Value indexes join the universe and equal weights fall below the cap.
+
+### 3. The portfolios
+
+The first chart shows how each strategy’s asset-group weights evolve
+across the 27 rebalances; the donuts show the latest allocation.
+
+``` r
+Plot_Q4_Weights(Q4_W)
+```
+
+![](README_files/figure-gfm/Q4-weights-1.png)<!-- -->
+
+``` r
+Plot_Q4_Donuts(Q4_W)
+```
+
+![](README_files/figure-gfm/Q4-weights-2.png)<!-- -->
+
+**Interpretation:** The overlapping areas show three very different
+funds, and the donuts confirm the same picture at the latest rebalance.
+The maximum-Sharpe fund puts all its bond allocation into the ALBI,
+holds no global bonds and concentrates its equity in MSCI USA and local
+Large Caps, while its commodity weight swings between zero and the cap.
+The minimum-variance fund is the most diversified across asset classes,
+with about 20% in global bonds, a small local bond weight and the full
+15% in commodities. The naive fund barely changes, apart from step
+changes when new assets become eligible.
+
+### 4. Does optimisation pay?
+
+Each strategy is backtested out of sample from January 2020: weights
+apply from the month after each rebalance and drift with returns until
+the next one. Turnover (half the sum of absolute weight changes at each
+rebalance) measures the trading each strategy needs.
+
+``` r
+Q4_Port <- Q4_Backtest(Q4_W, Q4_Univ)       # monthly fund returns, weights drifting between rebalances
+
+# Turnover at each rebalance
+Q4_TO <- Q4_W %>%
+    select(YM, Strategy, Asset, Weight) %>%
+    complete(YM, Strategy, Asset, fill = list(Weight = 0)) %>%
+    group_by(Strategy, Asset) %>% arrange(YM) %>%
+    mutate(Change = abs(Weight - lag(Weight))) %>%
+    group_by(Strategy, YM) %>%
+    summarise(Turnover = 0.5 * sum(Change, na.rm = TRUE), .groups = "drop") %>%
+    filter(YM != min(YM))
+
+# Performance statistics (Sharpe ratio uses STeFI as cash)
+Q4_Port %>%
+    mutate(YM = format(date, "%Y-%m")) %>%
+    left_join(Q4_Cash_M, by = "YM") %>%
+    group_by(Strategy) %>% arrange(date) %>%
+    summarise(AnnReturn  = prod(1 + Ret)^(12 / n()) - 1,
+              AnnVol     = sd(Ret) * sqrt(12),
+              Sharpe     = mean(Ret - Rf) / sd(Ret) * sqrt(12),
+              MaxDD      = min(cumprod(1 + Ret) / cummax(cumprod(1 + Ret)) - 1),
+              WorstMonth = min(Ret), .groups = "drop") %>%
+    left_join(Q4_TO %>% group_by(Strategy) %>% summarise(AvgTurnover = mean(Turnover)), by = "Strategy") %>%
+    knitr::kable(digits = 3)
+```
+
+| Strategy             | AnnReturn | AnnVol | Sharpe |  MaxDD | WorstMonth | AvgTurnover |
+|:---------------------|----------:|-------:|-------:|-------:|-----------:|------------:|
+| Max Sharpe           |     0.118 |  0.135 |  0.434 | -0.234 |     -0.161 |       0.052 |
+| Minimum variance     |     0.111 |  0.108 |  0.453 | -0.141 |     -0.074 |       0.049 |
+| Naive (equal weight) |     0.098 |  0.117 |  0.326 | -0.183 |     -0.132 |       0.006 |
+
+``` r
+Plot_Q4_Performance(Q4_Port)
+```
+
+![](README_files/figure-gfm/Q4-performance-1.png)<!-- -->
+
+**Interpretation:** Over January 2020 to September 2026, the
+maximum-Sharpe fund earned the highest return (11.8% a year) but with
+the highest volatility (13.5%) and by far the deepest drawdown (-23% in
+the COVID-19 crash), the price of chasing estimated returns into
+equities. The minimum-variance fund earned almost as much (11.1%) with
+much less risk (10.8% volatility, a -14% maximum drawdown), giving the
+best Sharpe ratio (0.45). Both optimised funds beat the naive benchmark
+(9.8% a year, Sharpe 0.33). The cost is trading: the optimised funds
+turn over about 5% of the portfolio per quarter against under 1% for the
+naive fund, with spikes in 2020 (44% for minimum variance in March 2020)
+as the COVID-19 shock reshaped the covariance estimates. These turnover
+levels are modest enough that index-fund trading costs would not
+overturn the ranking.
+
+The averages hide the shape of the returns, so the last chart shows the
+full distribution of monthly returns for each strategy.
+
+``` r
+Plot_Q4_Violins(Q4_Port)
+```
+
+![](README_files/figure-gfm/Q4-violins-1.png)<!-- -->
+
+**Interpretation:** The typical month looks similar for all three funds
+(a median of 1.5-1.8%), so the differences lie in the tails. The
+minimum-variance fund’s returns are close to symmetric (skewness of
+-0.36), while the maximum-Sharpe and naive funds show long left tails
+(-1.27 and -1.09), produced by a few large losses in equity sell-offs.
+For investors in a balanced fund, who care most about avoiding large
+losses, this is a strong argument for the minimum-variance approach.
+
+### Question 4 conclusion
+
+A global balanced index fund can be built within the mandate, and
+quarterly optimisation adds value over equal weighting. The
+minimum-variance fund is the most convincing: nearly the highest return,
+the lowest risk, the smallest drawdown and the most symmetric returns,
+while relying only on covariance estimates, which are far more reliable
+than return forecasts. The mandate itself deserves scrutiny: its bond
+cap binds at every rebalance, removes the low-risk part of the efficient
+frontier and costs about 0.3-0.5 percentage points of expected return at
+a given risk level, so a higher bond limit would suit a fund described
+as balanced. The main limitations are that global returns are in US
+dollars because no exchange rate is available (so the rand’s effect is
+not captured), the shrinkage intensities are fixed rather than
+estimated, and the out-of-sample period covers under seven years with
+one major sell-off.
