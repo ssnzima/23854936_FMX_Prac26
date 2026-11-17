@@ -1,5 +1,5 @@
 ---
-title: 'Question 1: Exploring Risk and Uncertainty'
+title: 'Exploring Risk and Uncertainty'
 documentclass: elsarticle
 Thesis_FP: false
 output:
@@ -10,7 +10,7 @@ output:
     fig_height: 3.5
   html_document:
     df_print: paged
-Author1: Student 23854936
+Author1: Sihlelelwe Nzima
 Ref1: Stellenbosch University, Stellenbosch, South Africa
 keywords: Volatility \sep GARCH \sep Policy uncertainty \sep Factor exposure \sep
   Dispersion
@@ -73,10 +73,6 @@ Unc_Levels <- Q1A_Uncertainty_Levels(Uncertainty_Indexes, Implied_Vol, Local_Cnc
 Monthly_Panel <- Q1A_Monthly_Panel(Garch_Out$Sigma, Unc_Levels)
 Driver_Regs   <- Q1A_Driver_Regressions(Monthly_Panel)
 ```
-
-<!-- ############################## -->
-<!-- # Start Writing here: -->
-<!-- ############################## -->
 
 # Introduction \label{Introduction}
 
@@ -246,7 +242,7 @@ Plot_VIX_Regimes(Q1B_VIX_Regimes(B_Panel, Implied_Vol))
 
 ## Sources of volatility
 
-A stock's share of a fund's risk can differ greatly from its weight, because risk depends on its volatility and on how it co-moves with the other holdings. I therefore decompose SafeCore's variance into stock and sector contributions each month (Euler risk contributions, using a Ledoit-Wolf shrunk covariance matrix estimated over the previous year). Figure \ref{sectorrisk} shows that resources have always been an important source of risk, but have become dominant recently: in August 2026 they made up 40% of the fund but 68% of its risk. Figure \ref{lollipop} identifies the culprits: AngloGold Ashanti and Gold Fields together carry almost half of the fund's risk, while banks and industrials (Standard Bank, Absa, FirstRand, MTN, Naspers) contribute less risk than their weight and act as diversifiers.
+A stock's share of a fund's risk can differ greatly from its weight, because risk depends on its volatility and on how it co-moves with the other holdings. I therefore decompose SafeCore's variance into stock and sector contributions each month (Euler risk contributions, using a Ledoit-Wolf shrunk covariance matrix estimated over the previous year). Figure \ref{sectorrisk} shows that resources have always been an important source of risk, and this has become more prevalent recently: in August 2026 they made up 40% of the fund but 68% of its risk. Figure \ref{lollipop} identifies the culprits: AngloGold Ashanti and Gold Fields together carry almost half of the fund's risk, while banks and industrials (Standard Bank, Absa, FirstRand, MTN, Naspers) contribute less risk than their weight and act as diversifiers.
 
 ```{r sectorrisk, fig.cap = "Sector contributions to SafeCore's risk \\label{sectorrisk}"}
 Plot_Sector_Risk(Risk_Contrib)
@@ -297,7 +293,7 @@ Macro_Panel <- Q1C_Macro_Panel(Unc_Levels, Opportunity, Monthly_CSV, Pair_Cor, V
 
 # Part C: The alpha opportunity since 2020 \label{PartC}
 
-Active managers can only add value when stocks behave differently from one another. I therefore measure the alpha opportunity from two complementary angles: dispersion (how far apart stock returns are on a given day) and correlation (how much stocks move together over time). High dispersion with low correlation describes a stock-picker's market; low dispersion with high correlation a macro-driven one. Constituent data is available from August 2020.
+Active managers often add value when stocks behave differently from one another. I therefore measure the alpha opportunity from two complementary angles: dispersion (how far apart stock returns are on a given day) and correlation (how much stocks move together over time). High dispersion with low correlation describes a stock-picker's market; low dispersion with high correlation a macro-driven one. Constituent data is available from August 2020.
 
 ## Dispersion
 
@@ -353,7 +349,7 @@ Plot_LeadLag(Q1C_LeadLag(Macro_Panel, Macro_Vars))
 Plot_Macro_Regimes(Q1C_Macro_Regimes(Macro_Panel, Macro_Vars))
 ```
 
-These macro relationships are correlations estimated on about six years of monthly data and are sensitive to a few episodes (2022 in particular), so they should be read as indicative rather than causal. The quintile spread is also a perfect-foresight measure: it shows how much there was to gain from stock selection, not what any manager actually earned.
+These macro relationships are correlations estimated on about six years of monthly data and are sensitive to a few episodes (2022 in particular), so they should be read as indicative rather than causal. The quintile spread is also a foresight measure: it shows how much there was to gain from stock selection, not what any manager actually earned.
 
 # Conclusion \label{Conclusion}
 

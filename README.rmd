@@ -1,7 +1,7 @@
 ---
 output:
   md_document:
-    variant: markdown_github
+    variant: gfm
 ---
 
 # Financial Econometrics Practical Exam 2026
@@ -434,3 +434,140 @@ Taken together, the three parts give a consistent picture. Local volatility has 
 
 
 
+# Question 2: Mid, Small and Large Cap Indices
+
+All functions for this question may be found in `Questions/Question2/code/` with the write-up in the research report `Questions/Question2/Question2.Rmd`.
+
+```{r Q2-source}
+list.files("Questions/Question2/code/", full.names = TRUE) %>%
+    .[grepl("[.]R$", .)] %>%
+    walk(~source(.))
+```
+
+**Approach.** An investor choosing between the large, mid and small cap indexes is really choosing between different bets on the economy, necessitating a comparison on three levels. First their structure: what sectors they hold, how concentrated they are, and how different they are from the broad market (active share against the Capped SWIX). Then their risk: how volatile the individual stocks are compared with the index as a whole, and how the indexes behave in a GARCH model. Finally their returns: rolling returns over time, a risk-return summary, and a stratification of months by rand and global stress to see which index holds up when it matters.
+
+### Data
+
+The size index holdings are monthly from 2007, so the structure analysis covers 2007-2026. Daily index returns (J200 for large caps, J201 mid caps, J202 small caps and J433 for the Capped SWIX) start in 2015, so the risk and return analysis covers 2015-2026.
+
+```{r Q2-data}
+Size_Idx    <- read_rds("data/Monthly_Index_Constituents.rds")
+Q2_Holdings <- Q2_Size_Holdings(Size_Idx, Index_Const)
+Q2_Rets     <- Q2_Index_Returns(Idx_Daily)
+```
+
+Data checks:
+
+* Weights sum to 84-100% in some months, which are rescaled to 100% per index and month.
+* About 16% of rows have no sector. These are filled from the same stock's sector in other months and then from the daily constituent file used in Question 1. What remains is labelled "Unclassified" rather than dropped: this is almost entirely older small caps (before 2020), and only about 8% of small-cap weight after 2015.
+* Daily stock returns above 100% (the corporate-action artefacts found in Question 1) are excluded from the constituent volatility calculations.
+
+### 1. Structure: sector exposure, concentration and active share
+
+```{r Q2-sectors, fig.height = 6}
+Plot_Q2_Sectors(Q2_Sector_Mix(Q2_Holdings))
+```
+
+**Interpretation:** The three indexes are very different bets on the economy. Large caps were dominated by resources in 2007 (about half the index), then shifted towards industrials until about 2016, and resources are back near 40% today. Mid caps started out as an industrials index (over 75% in 2007) and have become much more balanced, with financials now close to 30%. Small caps are mostly industrials and, increasingly, property (31% today). So an investor moving down the size spectrum is not only buying smaller companies, but swapping commodity exposure for locally listed industrial, financial and property businesses. As Section 5 shows, though, locally listed does not mean exposed to the rand: much of the small-cap property weight earns offshore income.
+
+Concentration is shown with Lorenz curves: stocks are sorted from the smallest to the largest weight, and the curve plots the cumulative share of stocks against the cumulative share of index weight. An equally weighted index lies on the diagonal, and the further the curve bows below it, the more a few large stocks dominate. The Gini coefficient summarises this in one number (0 = equal weights). The difference from the broad market is measured by active share against the Capped SWIX:
+
+$$\text{Active share}_t = \frac{1}{2}\sum_i \left| w_{i,t}^{\text{index}} - w_{i,t}^{\text{SWIX}} \right|$$
+
+which is 0% for identical holdings and 100% when the two share no stocks at all. Active share only compares holdings, so it is paired with tracking error (the annualised volatility of the return difference against the Capped SWIX). Following Cremers and Petajisto (2009), the two together classify a portfolio as a closet indexer (low active share, low tracking error), a diversified stock picker (high active share, low tracking error), a factor bet (low active share, high tracking error) or a concentrated stock picker (high on both), using cut-offs of 60% active share and 8% tracking error.
+
+```{r Q2-conc-as, fig.height = 4.5}
+Q2_ASTE <- Q2_AS_TE(Q2_Holdings, Q2_Rets)       # active share and tracking error per year
+Plot_Q2_Lorenz_ASTE(Q2_Lorenz(Q2_Holdings), Q2_ASTE)
+```
+
+**Interpretation:** The Lorenz curves show that large caps were by far the most concentrated index in 2007 (Gini 0.55) but have become much less so (0.44 in 2026), while mid and small caps have moved the other way (from 0.36 to 0.41 and from 0.30 to 0.34). The biggest change came in June 2023, when Richemont (about 22% of the index) drops out of the large cap holdings in the data. The active share map shows what this means for an investor. Large caps have moved into the closet-indexer corner: by 2026 their active share against the Capped SWIX is 13% and their tracking error only 2%, so the large cap index is now close to a replica of the broad market. Small caps sit firmly in the concentrated-stock-picker zone (active share of about 95% and tracking error of 9-19% a year), while mid caps move between the diversified and concentrated zones, as their tracking error rises in turbulent years (2015, 2020, 2026) and falls in calm ones.
+
+
+### 2. Risk: constituent volatility, diversification and GARCH
+
+The question asks for a comparison of the realised volatility of the constituents over time. Each month, the 6-month (126-day) realised volatility of every stock in each index is computed, and the figure shows the median stock and the middle 50% of stocks.
+
+```{r Q2-constvol, fig.height = 4.2}
+Q2_Const_Vol <- Q2_Constituent_Vol(Q2_Holdings, Stock_Rets)
+Plot_Q2_Const_Vol(Q2_Const_Vol)
+```
+
+**Interpretation:** Outside crises, the typical stock is about equally volatile in all three indexes (a median of about 25-35% a year). The differences appear in stress: during COVID the median small-cap stock reached about 70% volatility against about 60% for large and mid caps, and the spread between the most and least volatile small caps was much wider.
+
+This raises a puzzle: small-cap stocks are individually at least as volatile as large- and mid-cap stocks (and more so in crises), yet the small cap index is the least volatile of the three. To explain it, each index's volatility is compared with the weighted average volatility of its stocks. The ratio is low when stocks move independently of one another, so that their swings cancel out in the index.
+
+```{r Q2-div}
+Plot_Q2_Div_Scatter(Q2_Diversification(Q2_Const_Vol, Q2_Rets))
+```
+
+**Interpretation:** Each dot is a month. The large and mid cap dots cluster around the half-as-volatile ray, while most small cap dots sit close to the quarter-as-volatile ray (a long-run average ratio of about 0.35, against about 0.5 for the others). Small-cap stocks rarely move together, partly because they are driven by company-specific news and partly because many trade infrequently, so stale prices damp the measured index volatility. The low index volatility of small caps is therefore not the same as low risk: in crisis months (the dots far to the right, mainly 2020) the small cap dots move up towards the half-as-volatile ray, as their stocks suddenly move together, which is exactly when diversification is needed.
+
+Finally, the same GJR-GARCH(1,1) model as in Question 1 (AR(1) mean, skewed-t errors) is fitted to the three index return series. These fitted models are used to draw news impact curves: how much next-day volatility rises after a daily shock of a given size and sign. This shows directly whether an index's volatility is triggered mainly by falls or by moves in either direction.
+
+```{r Q2-garch}
+Q2_Garch <- Garch_Fit_Sigma(Q2_Rets, Names = c("Large Caps", "Mid Caps", "Small Caps"), Model = "gjrGARCH")
+Q2_Garch$Params %>% knitr::kable(digits = 4)
+Plot_Q2_News_Impact(Q2_News_Impact(Q2_Garch$Fits))
+```
+
+**Interpretation:** The curves show that the indexes face different kinds of volatility. After a 3% fall, large-cap volatility jumps from about 17% to 25% a year, but after a 3% rise it barely moves (17.4%). Small caps start from a much lower base (about 11.5%, consistent with the diversification result) and react strongly in both directions: to about 21% after a 3% fall and 17% after a 3% rise. The parameters confirm this. Large-cap volatility is driven almost entirely by bad news (leverage term $\gamma$ of 0.14 and a symmetric term $\alpha$ near zero), the same pattern as the broad market in Question 1: large caps react to global sell-offs. Small caps have a much larger $\alpha$ (0.07) and a smaller $\gamma$ (0.07), so their volatility responds to news of either sign, which fits a segment driven by company-specific and domestic news. Shocks are short-lived in all three (half-lives of 14-17 trading days).
+
+### 3. Returns: rolling returns and risk-return profiles
+
+Rolling returns show how the ranking of the indexes changes over time, which a single full-period number hides. 1-year and 3-year annualised rolling returns are computed from monthly returns and shown relative to the Capped SWIX as a heat strip, where each tile is one month.
+
+```{r Q2-rolling, fig.height = 7}
+Q2_Roll <- Q2_Rolling_Returns(Q2_Rets, Years = c(1, 3))
+Plot_Q2_Roll_Heat(Q2_Roll)
+```
+
+**Interpretation:** Large caps beat the Capped SWIX over most 3-year windows (88% of them), with the lead built mainly before 2022 (the green band in the large cap row of the 3-year panel). Small caps are the most cyclical: they fell furthest into the COVID crash (a 3-year return of about -18%), then led the market by up to 16% a year in the recovery of 2021-2023 (the darkest green tiles). Mid caps lagged the Capped SWIX in most windows (they beat it in only about a third of them).
+
+```{r Q2-risk-return, fig.height = 5}
+Q2_RR <- Q2_Risk_Return(Q2_Rets, STeFI)
+Q2_RR %>% knitr::kable(digits = 3)
+Plot_Q2_Risk_Return(Q2_RR)
+```
+
+**Interpretation:** Over 2015-2026 large caps returned about 11.0% a year and small caps 10.3%, both ahead of the Capped SWIX (8.7%), while mid caps returned only 7.3%. Small caps did this with the lowest volatility (14%) and so have the best Sharpe ratio (0.25, using STeFI as cash), but they also suffered by far the deepest drawdown (-51%, during COVID). That combination is the clearest sign that their low measured volatility understates their true risk. Mid caps offered the worst risk-return trade-off, with a Sharpe ratio close to zero.
+
+### 4. Stratification: which index holds up under stress?
+
+The stratification approach is as follows: identify the months in the top 20% (most stressed) and bottom 20% (calmest) of a stress measure, and compare each index's behaviour in those months with its full-sample behaviour. Daily returns are winsorised at the 1st and 99th percentiles first, so that a few extreme days do not drive the comparison. Two stratifiers are used: rand volatility (SAVI) for local currency stress and the VIX for global risk aversion.
+
+```{r Q2-strat, fig.height = 5}
+SAVI_Q2 <- Q2_SAVI(Local_Cncy_Vol_Index) %>% filter(date >= as.Date("2015-01-01"))
+VIX_Q2  <- Implied_Vol %>% filter(Name == "VIX", date >= as.Date("2015-01-01")) %>% select(date, Value = TRI)
+
+Strat_Months <- bind_rows(Q2_Strat_Months(SAVI_Q2, "Rand volatility (SAVI)"),
+                          Q2_Strat_Months(VIX_Q2, "Global fear (VIX)"))
+Q2_Strat <- Q2_Stratify(Q2_Rets, Strat_Months)      # volatility (vs full sample) and average return per regime
+Q2_Strat %>% select(Stratifier, Regime, Name, VolRatio, AvgMonthlyRet) %>% knitr::kable(digits = 3)
+Plot_Q2_Strat_Box(Q2_Strat_Monthly(Q2_Rets, Strat_Months))
+```
+
+**Interpretation:** The box plots show the whole spread of monthly outcomes, not only the averages. Rand stress is clearly bad for local equities: in the calmest fifth of months for the rand, the median monthly return was about 1.7-2.9% for every index, but in the most stressed fifth the Capped SWIX fell in 55% of months (median -0.5%), and large and small caps did little better. Mid caps held up best, falling in only 38% of rand-stress months with a median return of +1.5%. The table shows that volatility rises by a similar 15-20% in all indexes in rand-stress months, while global stress (VIX) raises it by 30-40%, most for small caps relative to their normal level. Average returns are actually higher in high-VIX months, but the much wider boxes show why: these months contain both the worst falls and the sharp rebounds that follow sell-offs (e.g. April-May 2020), so this is volatility, not protection.
+
+### 5. Beyond size: the hidden style and currency bets
+
+The analysis so far compares the indexes by size, but it raises a question the data can answer directly: *what is an investor really buying when they choose a size index?* Answering it draws on two datasets. The third-party factor scores give each index's style, using the same benchmark-relative approach as for SafeCore in Question 1 (the weighted average score of its holdings relative to the Capped SWIX, over the last 12 months), and the rand-hedge classification, also used for SafeCore, gives its currency profile. A final check is whether the SA size effect simply mirrors the global one, using the MSCI World small and mid cap index.
+
+```{r Q2-hidden, fig.height = 4.5}
+Q2_FE <- Q2_Factor_Exposures(Q2_Holdings, Factor_Scores, Months = 12)
+Q2_HP <- Q2_Hedge_Profile(Q2_Holdings, Hedge_Plays)
+Plot_Q2_Hidden_Bets(Q2_FE, Q2_HP)
+
+# Is the SA size effect a global one? (annual premium and correlation with the global spread)
+Q2_Global_Size(Idx_Daily, MSCI) %>% knitr::kable(digits = 3)
+```
+
+**Interpretation:** Size turns out to be a proxy for style. Large caps sit close to the benchmark on every factor. Mid caps are tilted towards value (+0.39), with weak growth (-0.39) and negative momentum (-0.25), and small caps are a deep-value bet (+0.86) on stocks with poor recent momentum (-0.43). This helps explain the return results: the mid and small cap indexes are concentrated in cheap, out-of-favour stocks, which lagged over a decade led by the large caps, and the strong small-cap recovery of 2021-2023 coincided with the rebound in value stocks after COVID.
+
+The currency profile overturns a common assumption. Small caps are not the "SA Inc." rand play they are often taken to be: they hold the most pure rand hedges (33%, against 27% for large caps) and the fewest rand plays (10%). The largest small-cap rand hedges are property stocks (Vukile, Fortress B, Resilient), consistent with the offshore property portfolios several SA REITs hold, alongside global businesses such as Datatec and Bytes Technology. Mid caps have a currency mix close to the broad market, so their resilience in months of rand stress (Section 4) is not explained by currency hedges, and more likely reflects their sector and style mix.
+
+Finally, the SA size effect is local rather than global. Since 2015 small caps returned about 0.6% a year less than large caps and mid caps about 3.2% less, while globally small and mid caps lagged the world index by about 2% a year. But the monthly SA spreads are barely correlated with the global one (0.09 for small caps, 0.17 for mid caps). Unlike volatility in Question 1, which was largely imported, the relative performance of the SA size segments is driven by local factors.
+
+### Question 2 conclusion
+
+The size indexes offer very different risk and return profiles. Large caps have delivered the strongest returns since 2015 and, since Richemont left the index in 2023, are now close to a copy of the broad market; their volatility is driven by global sell-offs. Small caps look the safest on paper, with the lowest volatility and best Sharpe ratio, but this reflects stocks that rarely move together and trade infrequently: when a crisis hits, their stocks move together and they suffered the deepest drawdown. Mid caps have been the weakest segment over the decade, but held up best in months of rand stress. For an investor, the choice between them is less about company size than about exposure: large caps for global and resource exposure, mid caps for a value-tilted exposure to local businesses, and small caps for a deep-value bet that is, perhaps surprisingly, the most rand-hedged segment of the market. The caveat is that small caps' smooth returns hide significant crash risk.

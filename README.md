@@ -105,24 +105,24 @@ Q1_Events %>% knitr::kable()
 ### Realised volatility
 
 Rolling 63-day standard deviation of daily returns, annualised with
-$\sqrt{252}$. I use 63 trading days (about one quarter) as a compromise:
-a shorter window (e.g. 21 days) is very noisy, while a longer one
-(e.g. 252 days) smooths away exactly the short volatility episodes I
-want to detect.
+$`\sqrt{252}`$. I use 63 trading days (about one quarter) as a
+compromise: a shorter window (e.g. 21 days) is very noisy, while a
+longer one (e.g. 252 days) smooths away exactly the short volatility
+episodes I want to detect.
 
 ``` r
 Roll_Vols <- Roll_Vol(Eq_Returns, Window = 63)
 Plot_Roll_Vol(Roll_Vols)
 ```
 
-![](README_files/figure-markdown_github/Q1A-rollvol-1.png)
+![](README_files/figure-gfm/Q1A-rollvol-1.png)<!-- -->
 
 ``` r
 Cal_Vols <- Calendar_Vol(Eq_Returns)
 Plot_Calendar_Vol(Cal_Vols)
 ```
 
-![](README_files/figure-markdown_github/Q1A-calvol-1.png)
+![](README_files/figure-gfm/Q1A-calvol-1.png)<!-- -->
 
 **Interpretation:** The COVID-19 crash dominates every series (local vol
 peaks above 50%), but outside 2020 the picture is one of short spikes
@@ -149,7 +149,7 @@ Vol_Regime_Table(Roll_Vols) %>% knitr::kable(digits = 3)
 ```
 
 | Region | Name | AvgVol_Pre | AvgVol_Post | VolChange | HighVolDays_Pre | HighVolDays_Post |
-|:---------|:----------|--------:|---------:|-------:|------------:|------------:|
+|:---|:---|---:|---:|---:|---:|---:|
 | Global (USD) | Nikkei 225 | 0.171 | 0.229 | 0.057 | 0.097 | 0.272 |
 | Global (USD) | S&P 500 | 0.126 | 0.176 | 0.049 | 0.114 | 0.261 |
 | Global (USD) | Euro Stoxx 50 | 0.161 | 0.208 | 0.047 | 0.091 | 0.277 |
@@ -165,7 +165,7 @@ Vol_Regime_Table(Roll_Vols, Exclude = as.Date(c("2020-02-15", "2020-07-31"))) %>
 ```
 
 | Region | Name | AvgVol_Pre | AvgVol_Post | VolChange | HighVolDays_Pre | HighVolDays_Post |
-|:---------|:----------|--------:|---------:|-------:|------------:|------------:|
+|:---|:---|---:|---:|---:|---:|---:|
 | Global (USD) | Nikkei 225 | 0.171 | 0.222 | 0.051 | 0.120 | 0.261 |
 | Global (USD) | Euro Stoxx 50 | 0.161 | 0.194 | 0.033 | 0.134 | 0.250 |
 | Global (USD) | S&P 500 | 0.126 | 0.156 | 0.030 | 0.157 | 0.232 |
@@ -232,7 +232,7 @@ Roll_Cors <- Roll_Cor_Weekly(Eq_Returns, LocalName = "Capped SWIX",
 Plot_Roll_Cor(Roll_Cors)
 ```
 
-![](README_files/figure-markdown_github/Q1A-rollcor-1.png)
+![](README_files/figure-gfm/Q1A-rollcor-1.png)<!-- -->
 
 **Interpretation:** The Capped SWIX is strongly linked to global
 markets, with an average correlation of about 0.68 with MSCI ACWI and
@@ -295,7 +295,7 @@ The asymmetric models (gjrGARCH, eGARCH) beat the standard GARCH for all
 three series. eGARCH has a marginally lower AIC for some series, but the
 differences are in the third decimal place, so the choice between the
 two asymmetric models makes little practical difference. I use the
-GJR-GARCH(1,1) because its leverage parameter (*γ*) is easy to
+GJR-GARCH(1,1) because its leverage parameter ($`\gamma`$) is easy to
 interpret: it measures how much more volatility rises after a negative
 shock than after a positive one.
 
@@ -315,19 +315,19 @@ Garch_Out$Params %>% knitr::kable(digits = 4)   # persistence close to 1 = long 
 Plot_Garch_Sigma(Garch_Out$Sigma)
 ```
 
-![](README_files/figure-markdown_github/Q1A-garch-fit-1.png)
+![](README_files/figure-gfm/Q1A-garch-fit-1.png)<!-- -->
 
 **Interpretation:** Two results stand out. First, the symmetric shock
-term *α* is close to zero for all three indexes while the leverage term
-*γ* is large (0.13 locally, 0.23 for ACWI): volatility reacts to
-*negative* shocks but barely to positive ones. This is the classic
-leverage effect, and it means volatility episodes are triggered by
-sell-offs. Second, persistence is high (about 0.97 for the Capped SWIX),
-so a volatility shock has a half-life of about 22 trading days (one
-month). Local shocks fade faster than shocks to MSCI ACWI (about 28
-days) but slower than shocks to MSCI EM (about 13 days). The conditional
-volatility plot confirms the realised-vol picture: the local and global
-series spike at the same times.
+term $`\alpha`$ is close to zero for all three indexes while the
+leverage term $`\gamma`$ is large (0.13 locally, 0.23 for ACWI):
+volatility reacts to *negative* shocks but barely to positive ones. This
+is the classic leverage effect, and it means volatility episodes are
+triggered by sell-offs. Second, persistence is high (about 0.97 for the
+Capped SWIX), so a volatility shock has a half-life of about 22 trading
+days (one month). Local shocks fade faster than shocks to MSCI ACWI
+(about 28 days) but slower than shocks to MSCI EM (about 13 days). The
+conditional volatility plot confirms the realised-vol picture: the local
+and global series spike at the same times.
 
 ### What drives local volatility? Offshore uncertainty
 
@@ -348,13 +348,13 @@ Monthly_Panel <- Q1A_Monthly_Panel(Garch_Out$Sigma, Unc_Levels)
 Plot_Drivers_Z(Monthly_Panel)
 ```
 
-![](README_files/figure-markdown_github/Q1A-panel-1.png)
+![](README_files/figure-gfm/Q1A-panel-1.png)<!-- -->
 
 ``` r
 Plot_Cor_Heatmap(Monthly_Panel)
 ```
 
-![](README_files/figure-markdown_github/Q1A-heatmap-1.png)
+![](README_files/figure-gfm/Q1A-heatmap-1.png)<!-- -->
 
 **Interpretation:** Local volatility moves closely with *market-based*
 measures of risk: global equity volatility (0.87 with MSCI ACWI vol,
@@ -370,9 +370,10 @@ a meaningful economic relationship.
 
 Finally, a simple regression of local (Capped SWIX) GARCH vol on the
 offshore measures. All variables are standardised, so each coefficient
-reads as “a one standard deviation rise in X goes with a *β* standard
-deviation rise in local vol”. Model 2 adds local currency vol (SAVI) to
-gauge whether it explains anything beyond the offshore drivers.
+reads as “a one standard deviation rise in X goes with a $`\beta`$
+standard deviation rise in local vol”. Model 2 adds local currency vol
+(SAVI) to gauge whether it explains anything beyond the offshore
+drivers.
 
 ``` r
 Driver_Regs <- Q1A_Driver_Regressions(Monthly_Panel)
@@ -380,7 +381,7 @@ Driver_Regs$Coefs %>% knitr::kable(digits = 3)
 ```
 
 | term               | estimate | std.error | statistic | p.value | Model           |
-|:------------------|---------:|----------:|----------:|--------:|:---------------|
+|:-------------------|---------:|----------:|----------:|--------:|:----------------|
 | VIX                |    0.637 |     0.058 |    10.902 |   0.000 | Offshore only   |
 | EPU.Global         |   -0.189 |     0.048 |    -3.980 |   0.000 | Offshore only   |
 | MOVE..US.bond.vol. |   -0.072 |     0.046 |    -1.548 |   0.124 | Offshore only   |
@@ -504,7 +505,7 @@ actual index where the two overlap:
 Plot_LowVol_Check(LowVol_Rets, LowVol_Daily, Idx_Daily)
 ```
 
-![](README_files/figure-markdown_github/Q1B-lowvol-check-1.png)
+![](README_files/figure-gfm/Q1B-lowvol-check-1.png)<!-- -->
 
 **Interpretation:** Over 2024-2026 the quarterly rebuild has a daily
 correlation of 0.995 with the actual index and a tracking error of 1.4%
@@ -528,7 +529,7 @@ Q1B_Scorecard(B_Panel %>% filter(Name != "Low Vol"), STeFI, as.Date("2015-01-01"
 ```
 
 | Fund | Ann. return | Ann. vol | Sharpe | Max drawdown | Beta | Tracking error | Info. ratio |
-|:---------|---------:|-------:|------:|----------:|-----:|-----------:|---------:|
+|:---|---:|---:|---:|---:|---:|---:|---:|
 | Capped SWIX | 0.087 | 0.178 | 0.102 | -0.417 | 1.000 | 0.000 | NA |
 | SafeCore | 0.114 | 0.179 | 0.255 | -0.391 | 0.953 | 0.056 | 0.486 |
 | Top 40 | 0.110 | 0.187 | 0.225 | -0.346 | 0.988 | 0.064 | 0.376 |
@@ -539,7 +540,7 @@ Q1B_Scorecard(B_Panel, STeFI, as.Date("2020-09-01"), as.Date("2026-09-30")) %>%
 ```
 
 | Fund | Ann. return | Ann. vol | Sharpe | Max drawdown | Beta | Tracking error | Info. ratio |
-|:---------|---------:|-------:|------:|----------:|-----:|-----------:|---------:|
+|:---|---:|---:|---:|---:|---:|---:|---:|
 | Capped SWIX | 0.162 | 0.164 | 0.589 | -0.141 | 1.000 | 0.000 | NA |
 | Low Vol | 0.124 | 0.151 | 0.388 | -0.147 | 0.876 | 0.051 | -0.740 |
 | SafeCore | 0.176 | 0.169 | 0.655 | -0.185 | 1.003 | 0.039 | 0.357 |
@@ -561,13 +562,13 @@ B_GDD <- Q1B_Growth_DD(B_Panel)
 Plot_Growth_DD(B_GDD)
 ```
 
-![](README_files/figure-markdown_github/Q1B-growth-1.png)
+![](README_files/figure-gfm/Q1B-growth-1.png)<!-- -->
 
 ``` r
 Plot_Vol_Ratio(Q1B_Vol_Ratio(B_Panel))
 ```
 
-![](README_files/figure-markdown_github/Q1B-volratio-1.png)
+![](README_files/figure-gfm/Q1B-volratio-1.png)<!-- -->
 
 **Interpretation:** The growth chart shows where SafeCore’s
 outperformance came from: it pulled ahead of the benchmark in 2016-2018
@@ -590,7 +591,7 @@ of the upside, which puts it above the dashed 45-degree line.
 Plot_Capture(Q1B_Capture(B_Panel))
 ```
 
-![](README_files/figure-markdown_github/Q1B-capture-1.png)
+![](README_files/figure-gfm/Q1B-capture-1.png)<!-- -->
 
 **Interpretation:** SafeCore’s points cluster tightly around (1, 1): in
 most years it simply moves with the market, capturing roughly all of the
@@ -610,7 +611,7 @@ Stress_Windows <- Q1B_Stress_Windows(Q1_Events, Implied_Vol, N_VIX = 5)
 Plot_Stress(Q1B_Stress_Returns(B_Panel, Stress_Windows))
 ```
 
-![](README_files/figure-markdown_github/Q1B-stress-1.png)
+![](README_files/figure-gfm/Q1B-stress-1.png)<!-- -->
 
 Finally, performance by volatility regime: each month is classified by
 its average VIX into calm, normal and stressed terciles, and I compare
@@ -620,7 +621,7 @@ each fund’s return with the benchmark’s.
 Plot_VIX_Regimes(Q1B_VIX_Regimes(B_Panel, Implied_Vol))
 ```
 
-![](README_files/figure-markdown_github/Q1B-regimes-1.png)
+![](README_files/figure-gfm/Q1B-regimes-1.png)<!-- -->
 
 **Interpretation:** SafeCore did better than the benchmark in 7 of the
 10 stress episodes, but usually by less than 1.5 percentage points, and
@@ -637,9 +638,8 @@ every stressed month.
 ### 2. Where does SafeCore’s volatility come from?
 
 At each month-end I decompose the fund’s variance into each stock’s
-contribution: with weights *w* and covariance matrix *Σ*, stock *i*
-contributes
-*w*<sub>*i*</sub>(*Σ**w*)<sub>*i*</sub>/*w*<sup>′</sup>*Σ**w*, and the
+contribution: with weights $`w`$ and covariance matrix $`\Sigma`$, stock
+$`i`$ contributes $`w_i (\Sigma w)_i / w'\Sigma w`$, and the
 contributions sum to 100%. Unlike the weight, this accounts for how
 volatile each stock is *and* how it co-moves with the rest of the fund.
 The covariance matrix uses the past year of daily returns and is shrunk
@@ -653,13 +653,13 @@ Risk_Contrib <- Q1B_Risk_Contrib(SC_Holdings, Stock_Rets)
 Plot_Sector_Risk(Risk_Contrib)
 ```
 
-![](README_files/figure-markdown_github/Q1B-riskcontrib-1.png)
+![](README_files/figure-gfm/Q1B-riskcontrib-1.png)<!-- -->
 
 ``` r
 Plot_Weight_vs_Risk(Risk_Contrib, TopN = 10)
 ```
 
-![](README_files/figure-markdown_github/Q1B-riskcontrib-2.png)
+![](README_files/figure-gfm/Q1B-riskcontrib-2.png)<!-- -->
 
 **Interpretation:** Resources are by far the main source of SafeCore’s
 risk, and this has become more prevalent recently. In August 2026
@@ -674,17 +674,16 @@ long-run average of about 18%.
 
 Two structural features can amplify this: concentration and currency
 exposure. Concentration is measured by the effective number of stocks,
-1/∑*w*<sub>*i*</sub><sup>2</sup> (equal to *N* for an equally weighted
-portfolio). For the currency profile I use the third party’s rand-hedge
-classification, which is only available at the latest date, so this is a
-snapshot.
+$`1/\sum w_i^2`$ (equal to $`N`$ for an equally weighted portfolio). For
+the currency profile I use the third party’s rand-hedge classification,
+which is only available at the latest date, so this is a snapshot.
 
 ``` r
 Plot_Conc_Hedge(Q1B_Effective_N(SC_Holdings, Index_Const),
                 Q1B_Hedge_Profile(SC_Holdings, Index_Const, Hedge_Plays))
 ```
 
-![](README_files/figure-markdown_github/Q1B-conc-hedge-1.png)
+![](README_files/figure-gfm/Q1B-conc-hedge-1.png)<!-- -->
 
 **Interpretation:** SafeCore behaves like a portfolio of about 17-22
 equally weighted stocks, roughly half the effective breadth of the
@@ -722,7 +721,7 @@ Score_Agree <- Q1B_Score_Agreement(Own_Scores, Factor_Scores)
 Plot_Score_Compare(Score_Agree, Own_Scores, Factor_Scores, SC_Holdings)
 ```
 
-![](README_files/figure-markdown_github/Q1B-own-scores-1.png)
+![](README_files/figure-gfm/Q1B-own-scores-1.png)<!-- -->
 
 **Interpretation:** These momentum score agree well with the vendor’s:
 the monthly rank correlation averages about 0.6. The largest
@@ -758,13 +757,13 @@ Active_Exp  <- Q1B_Active_Exposures(Exposures)
 Plot_Fingerprint(Active_Exp, Months = 12)
 ```
 
-![](README_files/figure-markdown_github/Q1B-exposures-1.png)
+![](README_files/figure-gfm/Q1B-exposures-1.png)<!-- -->
 
 ``` r
 Plot_Factor_Drift(Active_Exp)
 ```
 
-![](README_files/figure-markdown_github/Q1B-drift-1.png)
+![](README_files/figure-gfm/Q1B-drift-1.png)<!-- -->
 
 **Interpretation:** The factor indexes behave as expected (the Momentum
 index scores highest on momentum, Value on value, Low Vol on low
@@ -818,10 +817,12 @@ global macro measures from Part A. Constituent data starts in August
 Each day I compute the cross-sectional volatility (CSV) of the Capped
 SWIX constituents, both weighted and unweighted:
 
-$$CSV^{W}\_t = \sqrt{\sum_i w\_{i,t-1} (R\_{i,t} - \bar{R}\_t)^2}, \qquad \bar{R}\_t = \sum_i w\_{i,t-1} R\_{i,t}$$
+``` math
+CSV^{W}_t = \sqrt{\sum_i w_{i,t-1} (R_{i,t} - \bar{R}_t)^2}, \qquad \bar{R}_t = \sum_i w_{i,t-1} R_{i,t}
+```
 
 The weights are the previous day’s index weights (so there is no
-look-ahead) and *R̄*<sub>*t*</sub> is then the index return itself. The
+look-ahead) and $`\bar{R}_t`$ is then the index return itself. The
 weighted version is used as the main measure for two reasons. First, it
 measures the opportunity that matters to a manager benchmarked against
 the Capped SWIX: a large move in a stock with a tiny index weight
@@ -847,7 +848,7 @@ Monthly_CSV <- Q1C_Monthly_CSV(Daily_CSV)        # daily CSV is noisy, so I aver
 Plot_CSV(Monthly_CSV)
 ```
 
-![](README_files/figure-markdown_github/Q1C-csv-1.png)
+![](README_files/figure-gfm/Q1C-csv-1.png)<!-- -->
 
 **Interpretation:** Dispersion was high in late 2020 (an average daily
 CSV of about 2.3%, as markets recovered unevenly from COVID), fell
@@ -866,7 +867,7 @@ the sector-allocation opportunity).
 Plot_CSV_Decomp(Monthly_CSV)
 ```
 
-![](README_files/figure-markdown_github/Q1C-decomp-1.png)
+![](README_files/figure-gfm/Q1C-decomp-1.png)<!-- -->
 
 **Interpretation:** Until 2024 about 80% of dispersion came from within
 sectors, so the alpha opportunity was mostly about picking stocks. Since
@@ -892,7 +893,7 @@ Pair_Cor <- Q1C_Roll_PairCor(Index_Const, IndexName = "Large Caps", Window = 63)
 Plot_PairCor(Pair_Cor)
 ```
 
-![](README_files/figure-markdown_github/Q1C-paircor-1.png)
+![](README_files/figure-gfm/Q1C-paircor-1.png)<!-- -->
 
 **Interpretation:** The median pairwise correlation peaked in 2022
 (around 0.30, the year of the Ukraine war and aggressive rate hikes),
@@ -908,9 +909,10 @@ Dispersion and correlation are only weakly related in this sample
 (correlation of 0.17), so they capture different aspects of the
 opportunity and are worth combining. Plotting them against each other
 gives a map of market regimes, and the Alpha Opportunity Index
-summarises it in one number: *z*(dispersion) − *z*(correlation), where
-*z* standardises each over the sample. A value of 0 is an average month,
-and the units are standard deviations.
+summarises it in one number:
+$`z(\text{dispersion}) - z(\text{correlation})`$, where $`z`$
+standardises each over the sample. A value of 0 is an average month, and
+the units are standard deviations.
 
 ``` r
 Opportunity <- Q1C_Opportunity(Monthly_CSV, Pair_Cor)
@@ -918,13 +920,13 @@ Opportunity <- Q1C_Opportunity(Monthly_CSV, Pair_Cor)
 Plot_Opp_Quadrant(Opportunity)
 ```
 
-![](README_files/figure-markdown_github/Q1C-opportunity-1.png)
+![](README_files/figure-gfm/Q1C-opportunity-1.png)<!-- -->
 
 ``` r
 Plot_Opp_Index(Opportunity)
 ```
 
-![](README_files/figure-markdown_github/Q1C-opportunity-2.png)
+![](README_files/figure-gfm/Q1C-opportunity-2.png)<!-- -->
 
 **Interpretation:** The map shows clear clusters by year. 2022 sits in
 the high-correlation half (macro-driven), 2023-2024 in the
@@ -949,7 +951,7 @@ Realised <- Q1C_Realised_Spreads(Index_Const)
 Plot_Realised(Opportunity, Realised)
 ```
 
-![](README_files/figure-markdown_github/Q1C-realised-1.png)
+![](README_files/figure-gfm/Q1C-realised-1.png)<!-- -->
 
 **Interpretation:** In months where the index signalled high
 opportunity, the gap between the best and worst stock quintiles averaged
@@ -975,13 +977,13 @@ Macro_Panel <- Q1C_Macro_Panel(Unc_Levels, Opportunity, Monthly_CSV, Pair_Cor, V
 Plot_LeadLag(Q1C_LeadLag(Macro_Panel, Macro_Vars))
 ```
 
-![](README_files/figure-markdown_github/Q1C-macro-1.png)
+![](README_files/figure-gfm/Q1C-macro-1.png)<!-- -->
 
 ``` r
 Plot_Macro_Regimes(Q1C_Macro_Regimes(Macro_Panel, Macro_Vars))
 ```
 
-![](README_files/figure-markdown_github/Q1C-macro-2.png)
+![](README_files/figure-gfm/Q1C-macro-2.png)<!-- -->
 
 **Interpretation:** Three findings stand out.
 
@@ -1045,3 +1047,389 @@ edge while building in a risk ballast that targets the shocks that
 actually drive local volatility: limiting single-stock and sector risk,
 adding a low-volatility tilt, and monitoring global rates and currency
 volatility as early warnings.
+
+# Question 2: Mid, Small and Large Cap Indices
+
+All functions for this question may be found in
+`Questions/Question2/code/` with the write-up in the research report
+`Questions/Question2/Question2.Rmd`.
+
+``` r
+list.files("Questions/Question2/code/", full.names = TRUE) %>%
+    .[grepl("[.]R$", .)] %>%
+    walk(~source(.))
+```
+
+**Approach.** An investor choosing between the large, mid and small cap
+indexes is really choosing between different bets on the economy,
+necessitating a comparison on three levels. First their structure: what
+sectors they hold, how concentrated they are, and how different they are
+from the broad market (active share against the Capped SWIX). Then their
+risk: how volatile the individual stocks are compared with the index as
+a whole, and how the indexes behave in a GARCH model. Finally their
+returns: rolling returns over time, a risk-return summary, and a
+stratification of months by rand and global stress to see which index
+holds up when it matters.
+
+### Data
+
+The size index holdings are monthly from 2007, so the structure analysis
+covers 2007-2026. Daily index returns (J200 for large caps, J201 mid
+caps, J202 small caps and J433 for the Capped SWIX) start in 2015, so
+the risk and return analysis covers 2015-2026.
+
+``` r
+Size_Idx    <- read_rds("data/Monthly_Index_Constituents.rds")
+Q2_Holdings <- Q2_Size_Holdings(Size_Idx, Index_Const)
+Q2_Rets     <- Q2_Index_Returns(Idx_Daily)
+```
+
+Data checks:
+
+- Weights sum to 84-100% in some months, which are rescaled to 100% per
+  index and month.
+- About 16% of rows have no sector. These are filled from the same
+  stock’s sector in other months and then from the daily constituent
+  file used in Question 1. What remains is labelled “Unclassified”
+  rather than dropped: this is almost entirely older small caps (before
+  2020), and only about 8% of small-cap weight after 2015.
+- Daily stock returns above 100% (the corporate-action artefacts found
+  in Question 1) are excluded from the constituent volatility
+  calculations.
+
+### 1. Structure: sector exposure, concentration and active share
+
+``` r
+Plot_Q2_Sectors(Q2_Sector_Mix(Q2_Holdings))
+```
+
+![](README_files/figure-gfm/Q2-sectors-1.png)<!-- -->
+
+**Interpretation:** The three indexes are very different bets on the
+economy. Large caps were dominated by resources in 2007 (about half the
+index), then shifted towards industrials until about 2016, and resources
+are back near 40% today. Mid caps started out as an industrials index
+(over 75% in 2007) and have become much more balanced, with financials
+now close to 30%. Small caps are mostly industrials and, increasingly,
+property (31% today). So an investor moving down the size spectrum is
+not only buying smaller companies, but swapping commodity exposure for
+locally listed industrial, financial and property businesses. As Section
+5 shows, though, locally listed does not mean exposed to the rand: much
+of the small-cap property weight earns offshore income.
+
+Concentration is shown with Lorenz curves: stocks are sorted from the
+smallest to the largest weight, and the curve plots the cumulative share
+of stocks against the cumulative share of index weight. An equally
+weighted index lies on the diagonal, and the further the curve bows
+below it, the more a few large stocks dominate. The Gini coefficient
+summarises this in one number (0 = equal weights). The difference from
+the broad market is measured by active share against the Capped SWIX:
+
+``` math
+\text{Active share}_t = \frac{1}{2}\sum_i \left| w_{i,t}^{\text{index}} - w_{i,t}^{\text{SWIX}} \right|
+```
+
+which is 0% for identical holdings and 100% when the two share no stocks
+at all. Active share only compares holdings, so it is paired with
+tracking error (the annualised volatility of the return difference
+against the Capped SWIX). Following Cremers and Petajisto (2009), the
+two together classify a portfolio as a closet indexer (low active share,
+low tracking error), a diversified stock picker (high active share, low
+tracking error), a factor bet (low active share, high tracking error) or
+a concentrated stock picker (high on both), using cut-offs of 60% active
+share and 8% tracking error.
+
+``` r
+Q2_ASTE <- Q2_AS_TE(Q2_Holdings, Q2_Rets)       # active share and tracking error per year
+Plot_Q2_Lorenz_ASTE(Q2_Lorenz(Q2_Holdings), Q2_ASTE)
+```
+
+![](README_files/figure-gfm/Q2-conc-as-1.png)<!-- -->
+
+**Interpretation:** The Lorenz curves show that large caps were by far
+the most concentrated index in 2007 (Gini 0.55) but have become much
+less so (0.44 in 2026), while mid and small caps have moved the other
+way (from 0.36 to 0.41 and from 0.30 to 0.34). The biggest change came
+in June 2023, when Richemont (about 22% of the index) drops out of the
+large cap holdings in the data. The active share map shows what this
+means for an investor. Large caps have moved into the closet-indexer
+corner: by 2026 their active share against the Capped SWIX is 13% and
+their tracking error only 2%, so the large cap index is now close to a
+replica of the broad market. Small caps sit firmly in the
+concentrated-stock-picker zone (active share of about 95% and tracking
+error of 9-19% a year), while mid caps move between the diversified and
+concentrated zones, as their tracking error rises in turbulent years
+(2015, 2020, 2026) and falls in calm ones.
+
+### 2. Risk: constituent volatility, diversification and GARCH
+
+The question asks for a comparison of the realised volatility of the
+constituents over time. Each month, the 6-month (126-day) realised
+volatility of every stock in each index is computed, and the figure
+shows the median stock and the middle 50% of stocks.
+
+``` r
+Q2_Const_Vol <- Q2_Constituent_Vol(Q2_Holdings, Stock_Rets)
+Plot_Q2_Const_Vol(Q2_Const_Vol)
+```
+
+![](README_files/figure-gfm/Q2-constvol-1.png)<!-- -->
+
+**Interpretation:** Outside crises, the typical stock is about equally
+volatile in all three indexes (a median of about 25-35% a year). The
+differences appear in stress: during COVID the median small-cap stock
+reached about 70% volatility against about 60% for large and mid caps,
+and the spread between the most and least volatile small caps was much
+wider.
+
+This raises a puzzle: small-cap stocks are individually at least as
+volatile as large- and mid-cap stocks (and more so in crises), yet the
+small cap index is the least volatile of the three. To explain it, each
+index’s volatility is compared with the weighted average volatility of
+its stocks. The ratio is low when stocks move independently of one
+another, so that their swings cancel out in the index.
+
+``` r
+Plot_Q2_Div_Scatter(Q2_Diversification(Q2_Const_Vol, Q2_Rets))
+```
+
+![](README_files/figure-gfm/Q2-div-1.png)<!-- -->
+
+**Interpretation:** Each dot is a month. The large and mid cap dots
+cluster around the half-as-volatile ray, while most small cap dots sit
+close to the quarter-as-volatile ray (a long-run average ratio of about
+0.35, against about 0.5 for the others). Small-cap stocks rarely move
+together, partly because they are driven by company-specific news and
+partly because many trade infrequently, so stale prices damp the
+measured index volatility. The low index volatility of small caps is
+therefore not the same as low risk: in crisis months (the dots far to
+the right, mainly 2020) the small cap dots move up towards the
+half-as-volatile ray, as their stocks suddenly move together, which is
+exactly when diversification is needed.
+
+Finally, the same GJR-GARCH(1,1) model as in Question 1 (AR(1) mean,
+skewed-t errors) is fitted to the three index return series. These
+fitted models are used to draw news impact curves: how much next-day
+volatility rises after a daily shock of a given size and sign. This
+shows directly whether an index’s volatility is triggered mainly by
+falls or by moves in either direction.
+
+``` r
+Q2_Garch <- Garch_Fit_Sigma(Q2_Rets, Names = c("Large Caps", "Mid Caps", "Small Caps"), Model = "gjrGARCH")
+Q2_Garch$Params %>% knitr::kable(digits = 4)
+```
+
+| Name       | alpha1 |  beta1 | gamma1 | Persistence | HalfLife_days |
+|:-----------|-------:|-------:|-------:|------------:|--------------:|
+| Large Caps | 0.0056 | 0.8863 | 0.1409 |      0.9602 |       17.0515 |
+| Mid Caps   | 0.0266 | 0.8871 | 0.0859 |      0.9554 |       15.1800 |
+| Small Caps | 0.0696 | 0.8473 | 0.0702 |      0.9517 |       13.9951 |
+
+``` r
+Plot_Q2_News_Impact(Q2_News_Impact(Q2_Garch$Fits))
+```
+
+![](README_files/figure-gfm/Q2-garch-1.png)<!-- -->
+
+**Interpretation:** The curves show that the indexes face different
+kinds of volatility. After a 3% fall, large-cap volatility jumps from
+about 17% to 25% a year, but after a 3% rise it barely moves (17.4%).
+Small caps start from a much lower base (about 11.5%, consistent with
+the diversification result) and react strongly in both directions: to
+about 21% after a 3% fall and 17% after a 3% rise. The parameters
+confirm this. Large-cap volatility is driven almost entirely by bad news
+(leverage term $`\gamma`$ of 0.14 and a symmetric term $`\alpha`$ near
+zero), the same pattern as the broad market in Question 1: large caps
+react to global sell-offs. Small caps have a much larger $`\alpha`$
+(0.07) and a smaller $`\gamma`$ (0.07), so their volatility responds to
+news of either sign, which fits a segment driven by company-specific and
+domestic news. Shocks are short-lived in all three (half-lives of 14-17
+trading days).
+
+### 3. Returns: rolling returns and risk-return profiles
+
+Rolling returns show how the ranking of the indexes changes over time,
+which a single full-period number hides. 1-year and 3-year annualised
+rolling returns are computed from monthly returns and shown relative to
+the Capped SWIX as a heat strip, where each tile is one month.
+
+``` r
+Q2_Roll <- Q2_Rolling_Returns(Q2_Rets, Years = c(1, 3))
+Plot_Q2_Roll_Heat(Q2_Roll)
+```
+
+![](README_files/figure-gfm/Q2-rolling-1.png)<!-- -->
+
+**Interpretation:** Large caps beat the Capped SWIX over most 3-year
+windows (88% of them), with the lead built mainly before 2022 (the green
+band in the large cap row of the 3-year panel). Small caps are the most
+cyclical: they fell furthest into the COVID crash (a 3-year return of
+about -18%), then led the market by up to 16% a year in the recovery of
+2021-2023 (the darkest green tiles). Mid caps lagged the Capped SWIX in
+most windows (they beat it in only about a third of them).
+
+``` r
+Q2_RR <- Q2_Risk_Return(Q2_Rets, STeFI)
+Q2_RR %>% knitr::kable(digits = 3)
+```
+
+| Name        | AnnRet | AnnVol |  MaxDD | Sharpe |
+|:------------|-------:|-------:|-------:|-------:|
+| Capped SWIX |  0.087 |  0.178 | -0.417 |  0.102 |
+| Large Caps  |  0.110 |  0.187 | -0.346 |  0.225 |
+| Mid Caps    |  0.073 |  0.174 | -0.423 |  0.030 |
+| Small Caps  |  0.103 |  0.140 | -0.513 |  0.252 |
+
+``` r
+Plot_Q2_Risk_Return(Q2_RR)
+```
+
+![](README_files/figure-gfm/Q2-risk-return-1.png)<!-- -->
+
+**Interpretation:** Over 2015-2026 large caps returned about 11.0% a
+year and small caps 10.3%, both ahead of the Capped SWIX (8.7%), while
+mid caps returned only 7.3%. Small caps did this with the lowest
+volatility (14%) and so have the best Sharpe ratio (0.25, using STeFI as
+cash), but they also suffered by far the deepest drawdown (-51%, during
+COVID). That combination is the clearest sign that their low measured
+volatility understates their true risk. Mid caps offered the worst
+risk-return trade-off, with a Sharpe ratio close to zero.
+
+### 4. Stratification: which index holds up under stress?
+
+The stratification approach is as follows: identify the months in the
+top 20% (most stressed) and bottom 20% (calmest) of a stress measure,
+and compare each index’s behaviour in those months with its full-sample
+behaviour. Daily returns are winsorised at the 1st and 99th percentiles
+first, so that a few extreme days do not drive the comparison. Two
+stratifiers are used: rand volatility (SAVI) for local currency stress
+and the VIX for global risk aversion.
+
+``` r
+SAVI_Q2 <- Q2_SAVI(Local_Cncy_Vol_Index) %>% filter(date >= as.Date("2015-01-01"))
+VIX_Q2  <- Implied_Vol %>% filter(Name == "VIX", date >= as.Date("2015-01-01")) %>% select(date, Value = TRI)
+
+Strat_Months <- bind_rows(Q2_Strat_Months(SAVI_Q2, "Rand volatility (SAVI)"),
+                          Q2_Strat_Months(VIX_Q2, "Global fear (VIX)"))
+Q2_Strat <- Q2_Stratify(Q2_Rets, Strat_Months)      # volatility (vs full sample) and average return per regime
+Q2_Strat %>% select(Stratifier, Regime, Name, VolRatio, AvgMonthlyRet) %>% knitr::kable(digits = 3)
+```
+
+| Stratifier             | Regime | Name        | VolRatio | AvgMonthlyRet |
+|:-----------------------|:-------|:------------|---------:|--------------:|
+| Global fear (VIX)      | High   | Capped SWIX |    1.332 |         0.013 |
+| Global fear (VIX)      | High   | Large Caps  |    1.318 |         0.018 |
+| Global fear (VIX)      | High   | Mid Caps    |    1.304 |         0.014 |
+| Global fear (VIX)      | High   | Small Caps  |    1.388 |         0.017 |
+| Global fear (VIX)      | Low    | Capped SWIX |    0.772 |         0.008 |
+| Global fear (VIX)      | Low    | Large Caps  |    0.774 |         0.010 |
+| Global fear (VIX)      | Low    | Mid Caps    |    0.839 |         0.007 |
+| Global fear (VIX)      | Low    | Small Caps  |    0.745 |         0.009 |
+| Rand volatility (SAVI) | High   | Capped SWIX |    1.214 |        -0.001 |
+| Rand volatility (SAVI) | High   | Large Caps  |    1.181 |         0.003 |
+| Rand volatility (SAVI) | High   | Mid Caps    |    1.195 |         0.010 |
+| Rand volatility (SAVI) | High   | Small Caps  |    1.156 |         0.000 |
+| Rand volatility (SAVI) | Low    | Capped SWIX |    0.911 |         0.022 |
+| Rand volatility (SAVI) | Low    | Large Caps  |    0.912 |         0.022 |
+| Rand volatility (SAVI) | Low    | Mid Caps    |    0.902 |         0.019 |
+| Rand volatility (SAVI) | Low    | Small Caps  |    0.823 |         0.015 |
+
+``` r
+Plot_Q2_Strat_Box(Q2_Strat_Monthly(Q2_Rets, Strat_Months))
+```
+
+![](README_files/figure-gfm/Q2-strat-1.png)<!-- -->
+
+**Interpretation:** The box plots show the whole spread of monthly
+outcomes, not only the averages. Rand stress is clearly bad for local
+equities: in the calmest fifth of months for the rand, the median
+monthly return was about 1.7-2.9% for every index, but in the most
+stressed fifth the Capped SWIX fell in 55% of months (median -0.5%), and
+large and small caps did little better. Mid caps held up best, falling
+in only 38% of rand-stress months with a median return of +1.5%. The
+table shows that volatility rises by a similar 15-20% in all indexes in
+rand-stress months, while global stress (VIX) raises it by 30-40%, most
+for small caps relative to their normal level. Average returns are
+actually higher in high-VIX months, but the much wider boxes show why:
+these months contain both the worst falls and the sharp rebounds that
+follow sell-offs (e.g. April-May 2020), so this is volatility, not
+protection.
+
+### 5. Beyond size: the hidden style and currency bets
+
+The analysis so far compares the indexes by size, but it raises a
+question the data can answer directly: *what is an investor really
+buying when they choose a size index?* Answering it draws on two
+datasets. The third-party factor scores give each index’s style, using
+the same benchmark-relative approach as for SafeCore in Question 1 (the
+weighted average score of its holdings relative to the Capped SWIX, over
+the last 12 months), and the rand-hedge classification, also used for
+SafeCore, gives its currency profile. A final check is whether the SA
+size effect simply mirrors the global one, using the MSCI World small
+and mid cap index.
+
+``` r
+Q2_FE <- Q2_Factor_Exposures(Q2_Holdings, Factor_Scores, Months = 12)
+Q2_HP <- Q2_Hedge_Profile(Q2_Holdings, Hedge_Plays)
+Plot_Q2_Hidden_Bets(Q2_FE, Q2_HP)
+```
+
+![](README_files/figure-gfm/Q2-hidden-1.png)<!-- -->
+
+``` r
+# Is the SA size effect a global one? (annual premium and correlation with the global spread)
+Q2_Global_Size(Idx_Daily, MSCI) %>% knitr::kable(digits = 3)
+```
+
+| Spread                         | AnnPremium | CorWithGlobal |
+|:-------------------------------|-----------:|--------------:|
+| SA small minus large           |     -0.006 |         0.093 |
+| SA mid minus large             |     -0.032 |         0.168 |
+| Global small & mid minus world |     -0.020 |         1.000 |
+
+**Interpretation:** Size turns out to be a proxy for style. Large caps
+sit close to the benchmark on every factor. Mid caps are tilted towards
+value (+0.39), with weak growth (-0.39) and negative momentum (-0.25),
+and small caps are a deep-value bet (+0.86) on stocks with poor recent
+momentum (-0.43). This helps explain the return results: the mid and
+small cap indexes are concentrated in cheap, out-of-favour stocks, which
+lagged over a decade led by the large caps, and the strong small-cap
+recovery of 2021-2023 coincided with the rebound in value stocks after
+COVID.
+
+The currency profile overturns a common assumption. Small caps are not
+the “SA Inc.” rand play they are often taken to be: they hold the most
+pure rand hedges (33%, against 27% for large caps) and the fewest rand
+plays (10%). The largest small-cap rand hedges are property stocks
+(Vukile, Fortress B, Resilient), consistent with the offshore property
+portfolios several SA REITs hold, alongside global businesses such as
+Datatec and Bytes Technology. Mid caps have a currency mix close to the
+broad market, so their resilience in months of rand stress (Section 4)
+is not explained by currency hedges, and more likely reflects their
+sector and style mix.
+
+Finally, the SA size effect is local rather than global. Since 2015
+small caps returned about 0.6% a year less than large caps and mid caps
+about 3.2% less, while globally small and mid caps lagged the world
+index by about 2% a year. But the monthly SA spreads are barely
+correlated with the global one (0.09 for small caps, 0.17 for mid caps).
+Unlike volatility in Question 1, which was largely imported, the
+relative performance of the SA size segments is driven by local factors.
+
+### Question 2 conclusion
+
+The size indexes offer very different risk and return profiles. Large
+caps have delivered the strongest returns since 2015 and, since
+Richemont left the index in 2023, are now close to a copy of the broad
+market; their volatility is driven by global sell-offs. Small caps look
+the safest on paper, with the lowest volatility and best Sharpe ratio,
+but this reflects stocks that rarely move together and trade
+infrequently: when a crisis hits, their stocks move together and they
+suffered the deepest drawdown. Mid caps have been the weakest segment
+over the decade, but held up best in months of rand stress. For an
+investor, the choice between them is less about company size than about
+exposure: large caps for global and resource exposure, mid caps for a
+value-tilted exposure to local businesses, and small caps for a
+deep-value bet that is, perhaps surprisingly, the most rand-hedged
+segment of the market. The caveat is that small caps’ smooth returns
+hide significant crash risk.
