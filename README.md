@@ -12,3 +12,423 @@ for (q in paste0("Question", 1:4)) {
   Texevier::create_template(directory = "Questions", template_name = q, open_project = FALSE)
 }
 ```
+
+# Question 1: Exploring Risk and Uncertainty
+
+All functions for this question live in `Questions/Question1/code/`. The
+write-up (pdf) is `Questions/Question1/Question1.Rmd`.
+
+``` r
+pacman::p_load(tidyverse, rugarch, tbl2xts, RcppRoll, zoo, broom, xtable)
+
+list.files("Questions/Question1/code/", full.names = TRUE) %>%
+    .[grepl("[.]R$", .)] %>%
+    walk(~source(.))
+```
+
+## Part A: Has local volatility increased, and does it mirror the global experience?
+
+**Approach.** I first look at realised (historical) volatility for local
+and global indexes, then fit GARCH models to get conditional volatility,
+and finally ask *what drives* local volatility by relating it to
+offshore uncertainty measures (implied vol, policy uncertainty, bond and
+oil volatility) and to local currency volatility.
+
+### Data
+
+Local index returns start in 2015, so all comparisons run from January
+2015 to September 2026. Local series are in Rands; global indexes are
+total return series in USD, which I convert to daily returns.
+
+``` r
+Idx_Daily            <- read_rds("data/Index_Returns_Daily.rds")
+MSCI                 <- read_rds("data/MSCI_Indexes.rds")
+Global_Idx           <- read_rds("data/Global_Indexes_USD.rds")
+Uncertainty_Indexes  <- read_rds("data/Econ_Uncertainty_Indexes.rds")
+Implied_Vol          <- read_rds("data/Implied_Vol_Indexes.rds")
+Local_Cncy_Vol_Index <- read_rds("data/LCL_Currency_Vol_Index.rds")
+Gl_Cncy_Vol_Index    <- read_rds("data/Global_Currency_Vol_Index.rds")
+Commods              <- read_rds("data/Commodities.rds")
+
+# Local (Capped SWIX, Top 40, Mid, Small) + global (ACWI, EM, S&P 500, Euro Stoxx, Nikkei)
+Eq_Returns <- Q1A_Equity_Returns(Idx_Daily, MSCI, Global_Idx)
+Eq_Returns %>% count(Region, Name) %>% knitr::kable()
+```
+
+| Region       | Name          |    n |
+|:-------------|:--------------|-----:|
+| Global (USD) | Euro Stoxx 50 | 3016 |
+| Global (USD) | MSCI ACWI     | 3064 |
+| Global (USD) | MSCI EM       | 3065 |
+| Global (USD) | Nikkei 225    | 2868 |
+| Global (USD) | S&P 500       | 2952 |
+| Local (ZAR)  | Capped SWIX   | 2935 |
+| Local (ZAR)  | Mid Caps      | 2935 |
+| Local (ZAR)  | Small Caps    | 2935 |
+| Local (ZAR)  | Top 40        | 2935 |
+
+Insights from data exploration:
+
+- The global and Europe policy uncertainty (EPU) indexes are **monthly**
+  values repeated on every day, so any comparison with EPU is done at
+  monthly frequency.
+- The SAVI (USDZAR vol) index is quoted as a decimal (e.g. 0.15) instead
+  of a percentage on 109 days (mostly Mar-Jun 2021), a units error that
+  I rescale in `Q1A_Uncertainty_Levels()`.
+- The S&P 500 TRI carries US holidays forward as flat days, which I
+  remove.
+
+To give the time-series plots context, I shade five market events. They
+are deliberately split into two SA-specific political shocks and three
+global shocks, because comparing how local vs global volatility reacted
+to each type is a simple test of whether local volatility is home-grown
+or imported (see the event study below).
+
+``` r
+Q1_Events %>% knitr::kable()
+```
+
+| Label                    | Start      | End        | Type   |  ID |
+|:-------------------------|:-----------|:-----------|:-------|----:|
+| Nenegate                 | 2015-12-09 | 2015-12-31 | Local  |   1 |
+| Cabinet reshuffle & junk | 2017-03-30 | 2017-04-28 | Local  |   2 |
+| COVID-19 crash           | 2020-02-20 | 2020-06-30 | Global |   3 |
+| Ukraine war & oil shock  | 2022-02-24 | 2022-06-30 | Global |   4 |
+| US tariff shock          | 2025-04-02 | 2025-04-30 | Global |   5 |
+
+### Realised volatility
+
+Rolling 63-day standard deviation of daily returns, annualised with
+$\sqrt{252}$. I use 63 trading days (about one quarter) as a compromise:
+a shorter window (e.g. 21 days) is very noisy, while a longer one
+(e.g. 252 days) smooths away exactly the short volatility episodes I
+want to detect.
+
+``` r
+Roll_Vols <- Roll_Vol(Eq_Returns, Window = 63)
+Plot_Roll_Vol(Roll_Vols)
+```
+
+![](README_files/figure-markdown_github/Q1A-rollvol-1.png)
+
+``` r
+Cal_Vols <- Calendar_Vol(Eq_Returns)
+Plot_Calendar_Vol(Cal_Vols)
+```
+
+![](README_files/figure-markdown_github/Q1A-calvol-1.png)
+
+**Interpretation:** The COVID-19 crash dominates every series (local vol
+peaks above 50%), but outside 2020 the picture is one of short spikes
+rather than a steady upward trend. The calendar view highlights a recent
+divergence: in 2026 (to September) Capped SWIX vol is about 21%, far
+above MSCI ACWI (about 12%) and the S&P 500, and much closer to MSCI EM
+(about 25%). So in the most recent period, local volatility mirrors the
+*emerging market* experience rather than the developed market one. Small
+caps are consistently the least volatile local index, which reflects
+their low liquidity (stale prices smooth measured volatility) rather
+than lower true risk.
+
+To answer “has vol increased?” more formally, I compare average rolling
+vol before and after 2020, and the share of days each index spends above
+its own long-run 80th percentile of vol. Using each index’s *own*
+percentile makes “high vol” a relative definition, so a naturally more
+volatile market (e.g. the Nikkei) is not automatically flagged as
+high-vol all the time. The second table drops the COVID crash (mid-Feb
+to July 2020) to check that the result is not driven by one outlier
+episode.
+
+``` r
+Vol_Regime_Table(Roll_Vols) %>% knitr::kable(digits = 3)
+```
+
+| Region | Name | AvgVol_Pre | AvgVol_Post | VolChange | HighVolDays_Pre | HighVolDays_Post |
+|:---------|:----------|--------:|---------:|-------:|------------:|------------:|
+| Global (USD) | Nikkei 225 | 0.171 | 0.229 | 0.057 | 0.097 | 0.272 |
+| Global (USD) | S&P 500 | 0.126 | 0.176 | 0.049 | 0.114 | 0.261 |
+| Global (USD) | Euro Stoxx 50 | 0.161 | 0.208 | 0.047 | 0.091 | 0.277 |
+| Global (USD) | MSCI ACWI | 0.104 | 0.141 | 0.037 | 0.116 | 0.260 |
+| Global (USD) | MSCI EM | 0.137 | 0.169 | 0.033 | 0.100 | 0.271 |
+| Local (ZAR) | Small Caps | 0.098 | 0.141 | 0.043 | 0.066 | 0.295 |
+| Local (ZAR) | Mid Caps | 0.139 | 0.179 | 0.039 | 0.099 | 0.271 |
+| Local (ZAR) | Top 40 | 0.159 | 0.190 | 0.031 | 0.137 | 0.245 |
+| Local (ZAR) | Capped SWIX | 0.154 | 0.175 | 0.022 | 0.151 | 0.235 |
+
+``` r
+Vol_Regime_Table(Roll_Vols, Exclude = as.Date(c("2020-02-15", "2020-07-31"))) %>% knitr::kable(digits = 3)
+```
+
+| Region | Name | AvgVol_Pre | AvgVol_Post | VolChange | HighVolDays_Pre | HighVolDays_Post |
+|:---------|:----------|--------:|---------:|-------:|------------:|------------:|
+| Global (USD) | Nikkei 225 | 0.171 | 0.222 | 0.051 | 0.120 | 0.261 |
+| Global (USD) | Euro Stoxx 50 | 0.161 | 0.194 | 0.033 | 0.134 | 0.250 |
+| Global (USD) | S&P 500 | 0.126 | 0.156 | 0.030 | 0.157 | 0.232 |
+| Global (USD) | MSCI EM | 0.137 | 0.161 | 0.024 | 0.126 | 0.256 |
+| Global (USD) | MSCI ACWI | 0.104 | 0.127 | 0.022 | 0.165 | 0.227 |
+| Local (ZAR) | Small Caps | 0.098 | 0.125 | 0.027 | 0.069 | 0.299 |
+| Local (ZAR) | Mid Caps | 0.139 | 0.163 | 0.023 | 0.102 | 0.274 |
+| Local (ZAR) | Top 40 | 0.159 | 0.176 | 0.017 | 0.156 | 0.233 |
+| Local (ZAR) | Capped SWIX | 0.154 | 0.160 | 0.007 | 0.169 | 0.224 |
+
+**Interpretation:** Including COVID, every index is more volatile after
+2020 (Capped SWIX average vol rises from 15.4% to 17.5%). The robustness
+check changes the story, though: excluding the COVID crash, Capped SWIX
+average vol barely moves (15.4% to 16.0%), while the share of days in a
+high-vol state still rises from 17% to 22%. Local volatility has
+therefore not shifted to a permanently higher *level*; instead,
+volatility *episodes* have become more frequent. The rise is larger for
+Mid and Small Caps (high-vol days more than quadrupling for Small Caps,
+from about 7% to 30%) and larger in developed markets (S&P 500 +3.0pp,
+Nikkei +5.1pp excluding COVID) than for the Capped SWIX itself.
+
+### Event study: home-grown or imported volatility?
+
+For each shaded event: how much did rolling vol rise (peak during the
+event + 30 days, minus the level just before it)? If SA-specific events
+lift local vol more than global vol, while global events lift both,
+local vol is a mix of home-grown and imported shocks, and the size of
+each tells us which matters more.
+
+``` r
+Event_Vol_Table(Roll_Vols, Q1_Events, Names = c("Capped SWIX", "MSCI EM", "MSCI ACWI")) %>%
+    knitr::kable(digits = 3)
+```
+
+| Event                    | Type   | Capped SWIX | MSCI EM | MSCI ACWI |
+|:-------------------------|:-------|------------:|--------:|----------:|
+| Nenegate                 | Local  |       0.058 |   0.030 |     0.019 |
+| Cabinet reshuffle & junk | Local  |       0.002 |   0.014 |     0.011 |
+| COVID-19 crash           | Global |       0.393 |   0.261 |     0.417 |
+| Ukraine war & oil shock  | Global |       0.077 |   0.112 |     0.077 |
+| US tariff shock          | Global |       0.086 |   0.090 |     0.103 |
+
+**Interpretation:** Nenegate was a home-grown shock: local vol rose by
+about 5.8 percentage points, roughly three times the rise in MSCI ACWI
+(1.9pp). The 2017 cabinet reshuffle and junk downgrade, by contrast,
+barely moved local vol (+0.2pp), which suggests the downgrade had
+largely been priced in by the time it happened. The three global shocks
+lifted local vol by about as much as global vol (COVID: 39pp locally vs
+42pp for ACWI; Ukraine/oil: 7.7pp for both; tariffs: 8.6pp vs 10.3pp).
+The *large* volatility episodes in the local market are therefore
+imported, while local political shocks have been smaller and
+shorter-lived.
+
+### Does local move with global? Rolling correlation
+
+Weekly returns, 52-week window. Weekly data is used because the JSE
+closes before the US market opens, which biases daily correlations with
+US-heavy indexes downwards (a US move on day *t* only shows up in JSE
+prices on day *t+1*).
+
+``` r
+Roll_Cors <- Roll_Cor_Weekly(Eq_Returns, LocalName = "Capped SWIX",
+                             GlobalNames = c("MSCI ACWI", "MSCI EM", "S&P 500"))
+Plot_Roll_Cor(Roll_Cors)
+```
+
+![](README_files/figure-markdown_github/Q1A-rollcor-1.png)
+
+**Interpretation:** The Capped SWIX is strongly linked to global
+markets, with an average correlation of about 0.68 with MSCI ACWI and
+0.71 with MSCI EM. Correlations are not stable, however: they jumped to
+roughly 0.9 during the COVID crash, exactly when diversification was
+needed most, and fell sharply in quieter periods (the correlation with
+the S&P 500 dropped close to zero in late 2017). This “correlations go
+to one in a crisis” pattern is important for Part B: offshore
+diversification gives the least protection in global sell-offs. The
+recent fall in the correlation with MSCI EM (to about 0.5) suggests that
+part of the 2026 volatility is SA- or region-specific.
+
+### Conditional volatility: GARCH
+
+First, I confirm there is volatility clustering (ARCH effects), then
+compare GARCH specifications, then extract the conditional volatility
+from the preferred model.
+
+``` r
+# Ljung-Box on squared returns: H0 = no ARCH effects
+ARCH_Test_Table(Eq_Returns, Names = c("Capped SWIX", "MSCI ACWI", "MSCI EM")) %>% knitr::kable(digits = 4)
+```
+
+| Name        |  LB_Stat | P_Value |
+|:------------|---------:|--------:|
+| Capped SWIX | 2616.650 |       0 |
+| MSCI ACWI   | 2901.016 |       0 |
+| MSCI EM     | 1084.319 |       0 |
+
+The test statistics are very large (over 1,000 for all three series)
+with p-values of essentially zero, so I reject the null of no ARCH
+effects: large moves tend to follow large moves. A constant-variance
+model would therefore misstate risk, which justifies modelling
+volatility with GARCH.
+
+For the error distribution I use the skewed Student-t, because equity
+returns are fat-tailed (more extreme days than a normal distribution
+allows) and negatively skewed (crashes are larger than rallies). An
+AR(1) mean is included, as in Practical 6, to absorb any small
+first-order autocorrelation in returns.
+
+``` r
+# Lower AIC / BIC = better fit
+Garch_Model_Compare(Eq_Returns, Names = c("Capped SWIX", "MSCI ACWI", "MSCI EM")) %>% knitr::kable(digits = 4)
+```
+
+| Name        | Model    |     AIC |     BIC |
+|:------------|:---------|--------:|--------:|
+| Capped SWIX | sGARCH   | -6.3950 | -6.3808 |
+| Capped SWIX | gjrGARCH | -6.4135 | -6.3972 |
+| Capped SWIX | eGARCH   | -6.4184 | -6.4021 |
+| MSCI ACWI   | sGARCH   | -7.0883 | -7.0745 |
+| MSCI ACWI   | gjrGARCH | -7.1269 | -7.1112 |
+| MSCI ACWI   | eGARCH   | -7.1339 | -7.1181 |
+| MSCI EM     | sGARCH   | -6.5318 | -6.5181 |
+| MSCI EM     | gjrGARCH | -6.5548 | -6.5390 |
+| MSCI EM     | eGARCH   | -6.5530 | -6.5373 |
+
+The asymmetric models (gjrGARCH, eGARCH) beat the standard GARCH for all
+three series. eGARCH has a marginally lower AIC for some series, but the
+differences are in the third decimal place, so the choice between the
+two asymmetric models makes little practical difference. I use the
+GJR-GARCH(1,1) because its leverage parameter (*γ*) is easy to
+interpret: it measures how much more volatility rises after a negative
+shock than after a positive one.
+
+``` r
+Garch_Out <- Garch_Fit_Sigma(Eq_Returns, Names = c("Capped SWIX", "MSCI ACWI", "MSCI EM"), Model = "gjrGARCH")
+
+Garch_Out$Params %>% knitr::kable(digits = 4)   # persistence close to 1 = long volatility memory
+```
+
+| Name        | alpha1 |  beta1 | gamma1 | Persistence | HalfLife_days |
+|:------------|-------:|-------:|-------:|------------:|--------------:|
+| Capped SWIX | 0.0017 | 0.9033 | 0.1323 |      0.9689 |       21.9696 |
+| MSCI ACWI   | 0.0000 | 0.8651 | 0.2324 |      0.9758 |       28.3162 |
+| MSCI EM     | 0.0134 | 0.8477 | 0.1810 |      0.9491 |       13.2767 |
+
+``` r
+Plot_Garch_Sigma(Garch_Out$Sigma)
+```
+
+![](README_files/figure-markdown_github/Q1A-garch-fit-1.png)
+
+**Interpretation:** Two results stand out. First, the symmetric shock
+term *α* is close to zero for all three indexes while the leverage term
+*γ* is large (0.13 locally, 0.23 for ACWI): volatility reacts to
+*negative* shocks but barely to positive ones. This is the classic
+leverage effect, and it means volatility episodes are triggered by
+sell-offs. Second, persistence is high (about 0.97 for the Capped SWIX),
+so a volatility shock has a half-life of about 22 trading days (one
+month). Local shocks fade faster than shocks to MSCI ACWI (about 28
+days) but slower than shocks to MSCI EM (about 13 days). The conditional
+volatility plot confirms the realised-vol picture: the local and global
+series spike at the same times.
+
+### What drives local volatility? Offshore uncertainty
+
+Monthly panel of local and global GARCH vol, implied vol (VIX, V2X,
+VXEEM), policy uncertainty (EPU), US bond vol (MOVE), Brent oil realised
+vol, and FX vol (SAVI for USDZAR, JPM global FX vol). I work at monthly
+frequency because the global EPU index only updates monthly, and monthly
+averages also filter out day-to-day noise. In the plots, all series are
+standardised (z-scores) so that measures on very different scales
+(e.g. EPU around 100-600 vs VIX around 10-80) can be compared on one
+axis.
+
+``` r
+Unc_Levels <- Q1A_Uncertainty_Levels(Uncertainty_Indexes, Implied_Vol, Local_Cncy_Vol_Index,
+                                     Gl_Cncy_Vol_Index, Commods)
+Monthly_Panel <- Q1A_Monthly_Panel(Garch_Out$Sigma, Unc_Levels)
+
+Plot_Drivers_Z(Monthly_Panel)
+```
+
+![](README_files/figure-markdown_github/Q1A-panel-1.png)
+
+``` r
+Plot_Cor_Heatmap(Monthly_Panel)
+```
+
+![](README_files/figure-markdown_github/Q1A-heatmap-1.png)
+
+**Interpretation:** Local volatility moves closely with *market-based*
+measures of risk: global equity volatility (0.87 with MSCI ACWI vol,
+0.82 with MSCI EM vol), implied volatility (about 0.8 with VIX, V2X and
+VXEEM) and oil volatility (0.70). By contrast, the *news-based* policy
+uncertainty indexes have almost no correlation with local volatility
+(0.08 for global EPU, 0.00 for Europe). Policy uncertainty therefore
+seems to matter for local equities only once it turns into a shock to
+global risk appetite or to oil prices. It should be noted that SAVI is
+negatively correlated with the EPU indexes (about -0.4), which is more
+likely a trend effect (EPU trended up while rand vol trended down) than
+a meaningful economic relationship.
+
+Finally, a simple regression of local (Capped SWIX) GARCH vol on the
+offshore measures. All variables are standardised, so each coefficient
+reads as “a one standard deviation rise in X goes with a *β* standard
+deviation rise in local vol”. Model 2 adds local currency vol (SAVI) to
+gauge whether it explains anything beyond the offshore drivers.
+
+``` r
+Driver_Regs <- Q1A_Driver_Regressions(Monthly_Panel)
+Driver_Regs$Coefs %>% knitr::kable(digits = 3)
+```
+
+| term               | estimate | std.error | statistic | p.value | Model           |
+|:------------------|---------:|----------:|----------:|--------:|:---------------|
+| VIX                |    0.637 |     0.058 |    10.902 |   0.000 | Offshore only   |
+| EPU.Global         |   -0.189 |     0.048 |    -3.980 |   0.000 | Offshore only   |
+| MOVE..US.bond.vol. |   -0.072 |     0.046 |    -1.548 |   0.124 | Offshore only   |
+| Oil.Vol            |    0.374 |     0.055 |     6.837 |   0.000 | Offshore only   |
+| VIX                |    0.621 |     0.061 |    10.202 |   0.000 | Offshore + SAVI |
+| EPU.Global         |   -0.164 |     0.055 |    -2.991 |   0.003 | Offshore + SAVI |
+| MOVE..US.bond.vol. |   -0.062 |     0.047 |    -1.321 |   0.189 | Offshore + SAVI |
+| Oil.Vol            |    0.365 |     0.055 |     6.604 |   0.000 | Offshore + SAVI |
+| SAVI.USDZAR.vol    |    0.051 |     0.054 |     0.943 |   0.347 | Offshore + SAVI |
+
+``` r
+Driver_Regs$Fit %>% knitr::kable(digits = 3)
+```
+
+| Model           |    R2 |   N |
+|:----------------|------:|----:|
+| Offshore only   | 0.728 | 141 |
+| Offshore + SAVI | 0.730 | 141 |
+
+**Interpretation:** The offshore measures alone explain about 73% of the
+monthly variation in local volatility. The VIX is the dominant driver (a
+1 sd rise goes with a 0.64 sd rise in local vol), followed by oil
+volatility (0.37 sd), and both are highly significant. MOVE is not
+significant once the VIX is included. Global EPU enters with a
+*negative* sign, but because EPU and the VIX are correlated, this
+coefficient picks up the part of EPU that is *not* already reflected in
+market fear, and should not be read as “uncertainty lowers volatility”.
+Adding local currency volatility (SAVI) barely changes the fit (R² from
+0.728 to 0.730) and is insignificant: once global fear and oil are
+accounted for, the rand adds no extra information about equity
+volatility.
+
+### Part A conclusion
+
+Local volatility has not moved to a permanently higher level since 2020,
+but volatility episodes have become more frequent, and in 2025-26 local
+volatility has tracked emerging markets rather than developed markets.
+Most of these episodes are imported: global risk-off shocks and oil
+volatility explain the bulk of the variation in local volatility, they
+coincide with near-perfect correlation between local and global markets,
+and volatility rises far more after losses than after gains. On the
+seminar’s claim that oil price volatility and global policy uncertainty
+are spilling into local equities, the evidence is mixed: oil volatility
+clearly feeds through, but policy uncertainty only seems to matter once
+it turns into global market fear (a higher VIX). For a local equity
+fund, the practical takeaway is that the risk worth protecting against
+is a global sell-off rather than a rand shock, which is the lens I use
+to evaluate SafeCore in Part B.
+
+**Limitations.** The regressions show associations, not causal effects.
+Monthly volatility measures are persistent, so the residuals are likely
+autocorrelated and the OLS standard errors understated; the strong
+t-statistics on the VIX and oil remain convincing, but the borderline
+terms (EPU, MOVE) should be read with caution. Finally, local volatility
+is measured in rand and global volatility in US dollars, so part of any
+gap between them reflects the currency rather than the equity market
+itself.

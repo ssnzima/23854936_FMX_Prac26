@@ -1,121 +1,78 @@
 ---
-# IMPORTANT: Change settings here, but DO NOT change the spacing AT ALL.
-# Remove comments and add values where applicable.
-# The descriptions below should be self-explanatory
-
-title: "Helping You Write Academic Papers in R using Texevier"
-#subtitle: "This will appear as Right Header"
-
-documentclass: "elsarticle"
-
-# --------- Thesis title (Optional - set to FALSE by default).
-# You can move the details below around as you please.
-Thesis_FP: FALSE
-# Entry1: "An unbelievable study with a title spanning multiple lines."
-# Entry2: "\\textbf{Some Guy}" # textbf for bold
-# Entry3: "A thesis submitted toward the degree of Doctor of Philosophy"
-# Uni_Logo: Tex/Logo.png # Place a logo in the indicated location (from your root, e.g. defaults to ~/Tex/Logo.png) and uncomment this line. Leave uncommented for no image
-# Logo_width: 0.3 # If using a logo - use this to set width (size) of image
-# Entry4: "Under the supervision of: \\vfill Prof. Joe Smith and Dr. Frank Smith"
-# Entry5: "Stellenbosch University"
-# Entry6: April 2020
-# Entry7:
-# Entry8:
-
-# --------- Front Page
-# Comment: ----- Follow this pattern for up to 5 authors
-AddTitle: TRUE # Use FALSE when submitting to peer reviewed platform. This will remove author names.
-Author1: "Jane Doe^[__Contributions:__  \\newline _The authors would like to thank no institution for money donated to this project. Thank you sincerely._]"  # First Author - note the thanks message displayed as an italic footnote of first page.
-Ref1: "Some Institution, Cape Town, South Africa" # First Author's Affiliation
-Email1: "nfkatzke\\@gmail.com" # First Author's Email address
-
-Author2: "John Smith"
-Ref2: "Some other Institution, Cape Town, South Africa"
-Email2: "John\\@gmail.com"
-CommonAffiliation_12: TRUE # If Author 1 and 2 have a common affiliation. Works with _13, _23, etc.
-
-Author3: "John Doe"
-Email3: "Joe\\@gmail.com"
-
-CorrespAuthor_1: TRUE  # If corresponding author is author 3, e.g., use CorrespAuthor_3: TRUE
-
-# Comment out below to remove both. JEL Codes only given if keywords also given.
-keywords: "Multivariate GARCH \\sep Kalman Filter \\sep Copula" # Use \\sep to separate
-JELCodes: "L250 \\sep L100"
-
-# ----- Manage headers and footers:
-#BottomLFooter: $Title$
-#BottomCFooter:
-#TopLHeader: \leftmark # Adds section name at topleft. Remove comment to add it.
-BottomRFooter: "\\footnotesize Page \\thepage" # Add a '#' before this line to remove footer.
-addtoprule: TRUE
-addfootrule: TRUE               # Use if footers added. Add '#' to remove line.
-
-# --------- page margins:
-margin: 2.3 # Sides
-bottom: 2 # bottom
-top: 2.5 # Top
-HardSet_layout: TRUE # Hard-set the spacing of words in your document. This will stop LaTeX squashing text to fit on pages, e.g.
-# This is done by hard-setting the spacing dimensions. Set to FALSE if you want LaTeX to optimize this for your paper.
-
-# --------- Line numbers
-linenumbers: FALSE # Used when submitting to journal
-
-# ---------- References settings:
-# You can download cls format here: https://www.zotero.org/ - simply search for your institution. You can also edit and save cls formats here: https://editor.citationstyles.org/about/
-# Hit download, store it in Tex/ folder, and change reference below - easy.
-bibliography: Tex/ref.bib       # Do not edit: Keep this naming convention and location.
-csl: Tex/harvard-stellenbosch-university.csl # referencing format used.
-# By default, the bibliography only displays the cited references. If you want to change this, you can comment out one of the following:
-#nocite: '@*' # Add all items in bibliography, whether cited or not
-# nocite: |  # add specific references that aren't cited
-#  @grinold2000
-#  @Someoneelse2010
-
-# ---------- General:
-RemovePreprintSubmittedTo: TRUE  # Removes the 'preprint submitted to...' at bottom of titlepage
-Journal: "Journal of Finance"   # Journal that the paper will be submitting to, if RemovePreprintSubmittedTo is set to TRUE.
-toc: FALSE                       # Add a table of contents
-numbersections: TRUE             # Should sections (and thus figures and tables) be numbered?
-fontsize: 11pt                  # Set fontsize
-linestretch: 1.2                # Set distance between lines.
-link-citations: TRUE            # This creates dynamic links to the papers in reference list.
-
-### Adding additional latex packages:
-# header-includes:
-#    - \usepackage{colortbl} # Add additional packages here.
-
+title: 'Question 1: Exploring Risk and Uncertainty'
+documentclass: elsarticle
+Thesis_FP: false
 output:
+  html_document:
+    df_print: paged
   pdf_document:
-    keep_tex: TRUE
+    keep_tex: true
     template: Tex/TexDefault.txt
-    fig_width: 3.5 # Adjust default figure sizes. This can also be done in the chunks of the text.
+    fig_width: 3.5
     fig_height: 3.5
+Author1: Student 23854936
+Ref1: Stellenbosch University, Stellenbosch, South Africa
+keywords: Volatility \sep GARCH \sep Policy uncertainty \sep Factor exposure \sep
+  Dispersion
+JELCodes: G11 \sep G15 \sep C58
+BottomRFooter: \footnotesize Page \thepage
+addtoprule: true
+addfootrule: true
+margin: 2.3
+bottom: 2
+top: 2.5
+HardSet_layout: true
+linenumbers: false
+bibliography: Tex/ref.bib
+csl: "Tex/harvard-stellenbosch-university.csl"
+RemovePreprintSubmittedTo: true
+Journal: Journal of Finance
+toc: false
+numbersections: true
+fontsize: 11pt
+linestretch: 1.2
+link-citations: true
+AddTitle: true
 abstract: |
-  Abstract to be written here. The abstract should not be too long and should provide the reader with a good understanding what you are writing about. Academic papers are not like novels where you keep the reader in suspense. To be effective in getting others to read your paper, be as open and concise about your findings here as possible. Ideally, upon reading your abstract, the reader should feel he / she must read your paper in entirety.
+  This note examines whether volatility on the local equity market has increased, how it relates to offshore economic and policy uncertainty, and what this means for building risk ballasts into our local equity funds. Local volatility has become more episodic since 2020 rather than permanently higher, and its spikes are largely imported: global implied volatility and oil price volatility explain close to three quarters of the monthly variation in Capped SWIX volatility, while local currency volatility adds little.
 ---
 
-<!-- First: Set your default preferences for chunk options: -->
-
-<!-- If you want a chunk's code to be printed, set echo = TRUE. message = FALSE stops R printing ugly package loading details in your final paper too. I also suggest setting warning = FALSE and checking for warnings in R, else you might find ugly warnings in your paper. -->
-
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, fig.width = 6, fig.height = 5, fig.pos="H", fig.pos = 'H')
-# Note: Include = FALSE implies the code is executed, but not printed in your pdf.
-# warning and message = FALSE implies ugly messages and warnings are removed from your pdf.
-# These should be picked up when you execute the command chunks (code sections below) in your rmd, not printed in your paper!
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, fig.width = 7, fig.height = 4,
+                      fig.pos = "H", fig.align = "center", out.width = "100%", dev = "png", dpi = 200)
 
-# Lets load in example data, and see how this can be stored and later called from your 'data' folder.
-if(!require("tidyverse")) install.packages("tidyverse")
-library(tidyverse)
-Example_data <- Texevier::Ex_Dat
+pacman::p_load(tidyverse, rugarch, tbl2xts, RcppRoll, zoo, broom, xtable)
 
-# Notice that as you are working in a .Rproj file (I am assuming you are) - the relative paths of your directories start at your specified root.
-# This means that when working in a .Rproj file, you never need to use getwd() - it is assumed as your base root automatically.
-write_rds(Example_data, path = "data/Example_data.rds")
+# Load all the functions for this question from the code folder
+list.files("code/", full.names = TRUE) %>% .[grepl("[.]R$", .)] %>% walk(~source(.))
 
+# Helper: print a tibble as a LaTeX table (xtable), as in the template
+Print_Table <- function(df, Caption, Digits = 2) {
+    print.xtable(xtable(df, caption = Caption, digits = Digits),
+                 floating = TRUE, table.placement = "H", comment = FALSE,
+                 include.rownames = FALSE, caption.placement = "top", booktabs = TRUE)
+}
 ```
 
+```{r data-load}
+Idx_Daily            <- read_rds("data/Index_Returns_Daily.rds")
+MSCI                 <- read_rds("data/MSCI_Indexes.rds")
+Global_Idx           <- read_rds("data/Global_Indexes_USD.rds")
+Uncertainty_Indexes  <- read_rds("data/Econ_Uncertainty_Indexes.rds")
+Implied_Vol          <- read_rds("data/Implied_Vol_Indexes.rds")
+Local_Cncy_Vol_Index <- read_rds("data/LCL_Currency_Vol_Index.rds")
+Gl_Cncy_Vol_Index    <- read_rds("data/Global_Currency_Vol_Index.rds")
+Commods              <- read_rds("data/Commodities.rds")
+
+Eq_Returns <- Q1A_Equity_Returns(Idx_Daily, MSCI, Global_Idx)
+Roll_Vols  <- Roll_Vol(Eq_Returns, Window = 63)
+Cal_Vols   <- Calendar_Vol(Eq_Returns)
+Roll_Cors  <- Roll_Cor_Weekly(Eq_Returns)
+Garch_Out  <- Garch_Fit_Sigma(Eq_Returns, Names = c("Capped SWIX", "MSCI ACWI", "MSCI EM"), Model = "gjrGARCH")
+Unc_Levels <- Q1A_Uncertainty_Levels(Uncertainty_Indexes, Implied_Vol, Local_Cncy_Vol_Index, Gl_Cncy_Vol_Index, Commods)
+Monthly_Panel <- Q1A_Monthly_Panel(Garch_Out$Sigma, Unc_Levels)
+Driver_Regs   <- Q1A_Driver_Regressions(Monthly_Panel)
+```
 
 <!-- ############################## -->
 <!-- # Start Writing here: -->
@@ -123,301 +80,105 @@ write_rds(Example_data, path = "data/Example_data.rds")
 
 # Introduction \label{Introduction}
 
-References are to be made as follows: @fama1997[p. 33] and @grinold2000 Such authors could also be referenced in brackets [@grinold2000] and together [@fama1997 \& @grinold2000]. Source the reference code from scholar.google.com by clicking on ``cite'' below article name. Then select BibTeX at the bottom of the Cite window, and proceed to copy and paste this code into your ref.bib file, located in the directory's Tex folder. Open this file in Rstudio for ease of management, else open it in your preferred Tex environment. Add and manage your article details here for simplicity - once saved, it will self-adjust in your paper.
+A recent seminar argued that oil price volatility and global policy uncertainty are spilling over into local equity markets, and that local portfolios should lean more towards lower-volatility stocks. This note tests that argument in three steps. Part A establishes whether local volatility has increased and whether it mirrors the global experience. Part B evaluates how our SafeCore fund has navigated volatility and what its factor exposures are. Part C studies dispersion and correlation, to gauge the alpha opportunity in the market since 2020.
 
-> I suggest renaming the top line after \@article, as done in the template ref.bib file, to something more intuitive for you to remember. Do not change the rest of the code. Also, be mindful of the fact that bib references from google scholar may at times be incorrect. Reference Latex forums for correct bibtex notation.
+# Part A: Has local volatility increased? \label{PartA}
 
-To reference a section, you have to set a label using ``\\label'' in R, and then reference it in-text as e.g. referencing a later section, Section \ref{Meth}.
+## Data
 
-Writing in Rmarkdown is surprizingly easy - see [this website](https://www.rstudio.com/wp-content/uploads/2015/03/rmarkdown-reference.pdf) cheatsheet for a summary on writing Rmd writing tips.
+Local index returns (Capped SWIX, Top 40, Mid Caps and Small Caps, in rand) are available from January 2015, so the analysis runs from January 2015 to September 2026. For the global comparison I use total return indexes in US dollars: MSCI ACWI, MSCI Emerging Markets, the S&P 500, the Euro Stoxx 50 and the Nikkei 225. To link volatility to uncertainty I use implied volatility (VIX, V2X, VXEEM), economic policy uncertainty (EPU) indexes, US bond market volatility (MOVE), Brent oil volatility and currency volatility (SAVI for USDZAR and JP Morgan's global FX volatility index).
 
-# Data  {-}
+Two data issues were treated. The global and European EPU indexes are monthly values repeated on every day, so all comparisons with them are done at a monthly frequency. The SAVI index is quoted as a decimal rather than a percentage on 109 days (mostly March to June 2021); these values were rescaled.
 
-Notice how I used the curly brackets and dash to remove the numbering of the data section.
+## Realised volatility
 
-Discussion of data should be thorough with a table of statistics and ideally a figure.
+Figure \ref{rollvol} plots the rolling three-month realised volatility of each index. The shaded bands mark five market events: two South African political shocks (Nenegate in December 2015, and the March 2017 cabinet reshuffle followed by the sovereign downgrade to junk) and three global shocks (the COVID-19 crash, the 2022 Ukraine war and oil price shock, and the April 2025 US tariff shock). The COVID-19 crash dominates every series, with local volatility peaking above 50%. Outside of 2020, local volatility has been punctuated by shorter spikes, most of which coincide with the global events.
 
-In your tempalte folder, you will find a Data and a Code folder. In order to keep your data files neat, store all of them in your Data folder. Also, I strongly suggest keeping this Rmd file for writing and executing commands, not writing out long pieces of data-wrangling. In the example below, I simply create a ggplot template for scatter plot consistency. I suggest keeping all your data in a data folder.
-
-<!-- The following is a code chunk. It must have its own unique name (after the r), or no name. After the comma follows commands for R which are self-explanatory. By default, the code and messages will not be printed in your pdf, just the output: -->
-
-```{r Figure1, warning =  FALSE, fig.align = 'center', fig.cap = "Caption Here \\label{Figure1}", fig.height = 3, fig.width = 6, dev = 'png'}
-  # This is just a random plot to show you a plot. This is done if the getwd() does not point to your Template's directory.
-  # Set WD below to your project's working directory.
-
-  g <-
-  ggplot(data = mtcars) +
-  geom_point(aes(x = disp, y = hp, color = cyl)) +
-  theme_bw() +
-  # theme(legend.position = "none") +
-  theme(plot.title = element_text(size = 10)) +
-  theme(axis.title = element_text(size = 10),
-        axis.title.x = element_text()) +
-  labs(y = "y-axis", x = "x-axis", title = "Some amazing plot")
-
-g
-
+```{r rollvol, fig.height = 5.5, fig.cap = "Rolling 3-month realised volatility, local vs global \\label{rollvol}"}
+Plot_Roll_Vol(Roll_Vols)
 ```
 
-To make your graphs look extra nice in latex world, you could use Tikz device. Replace dev - 'png' with 'tikz' in the chunk below. Notice this makes the build time longer and produces extra tex files - so if you are comfortable with this, set your device to Tikz and try it out:
+Figure \ref{calvol} shows the same story by calendar year. The notable recent feature is 2026: Capped SWIX volatility (about 21% year-to-date) is well above that of developed markets (MSCI ACWI about 12%) and much closer to emerging markets (MSCI EM about 25%). Local volatility in 2025-26 is therefore tracking the emerging market experience rather than the developed market one.
 
-```{r Figure2, warning =  FALSE, fig.align = 'center', fig.cap = "Caption Here \\label{Figure2}", fig.height = 3, fig.width = 6, dev = 'png'}
-
-ExampleData <- read_rds( "data/Example_data.rds")
-
-source("code/Example_Plot_Scatter.R") # Load a function from your 'code' folder. This e.g. plots scatters to your own preferences.
-source( "code/Data_Create.R") #
-
-ExampleData <- Data_Create(N = 100) # Same as the ExampleData loaded above - this is just a function to create the stored data.
-
-g <- Example_Plot_Scatter(DataInput = ExampleData,
-                          X = "Height_Score",
-                          Y = "Weight_Score",
-                          Z = "Agility_Score",
-                          Theme = theme_bw(), # run ?ggthemes for other themes.
-                          Title = "", # I prefer to use the caption set above.
-                          Ylab = "Height",
-                          Xlab = "Lenght",
-                          LegendTitle = "Agility",
-                          TitleSize = 10,
-                          LabSize = 10)
-
-g
-
-# Although the functions above are really simple, the principle is simple: containing calculations and data wrangling in their own functions will make this template much cleaner and more manageable.
-# When you start working, delete these meaningless functions and replace with your own...
-
+```{r calvol, fig.cap = "Calendar-year realised volatility \\label{calvol}"}
+Plot_Calendar_Vol(Cal_Vols)
 ```
 
-To reference the plot above, add a ``\\label'' after the caption in the chunk heading, as done above. Then reference the plot as such: As can be seen, Figures \ref{Figure1}  and \ref{Figure2} are excellent, with Figure \ref{Figure2} being particularly aesthetically pleasing due to its device setting of Tikz. The nice thing now is that it correctly numbers all your figures (and sections or tables) and will update if it moves. The links are also dynamic.
+Table \ref{tab:regime} compares average volatility before and after 2020, and the share of days each index spends in a high-volatility state (above its own long-run 80th percentile). Including the COVID period, every index shows higher volatility after 2020. Once the COVID crash is excluded, however, average Capped SWIX volatility barely rises (from 15.4% to 16.0%), while the share of high-volatility days still increases (from 17% to 22%). The increase in local volatility is therefore better described as **more frequent volatility episodes** than as a permanently higher level. It is also smaller than the increase seen in developed markets such as the S&P 500 and the Nikkei.
 
-I very strongly suggest using ggplot2 (ideally in combination with dplyr) using the ggtheme package to change the themes of your figures.
-
-Also note the information that I have placed above the chunks in the code chunks for the figures. You can edit any of these easily - visit the Rmarkdown webpage for more information.
-
-# Splitting a page
-
-You can also very easily split a page using built-in Pandoc formatting. I comment this out in the code (as this has caused issues building the pdf for some users - which I presume to be a Pandoc issue), but you are welcome to try it out yourself by commenting out the following section in your Rmd file.
-
-
-<!-- :::::: {.columns data-latex="[T]"} -->
-<!-- ::: {.column data-latex="{0.7\textwidth}"} -->
-<!-- ```{r, echo=FALSE, fig.width=4, fig.height=4} -->
-<!-- par(mar = c(4, 4, .2, .1)) -->
-<!-- plot(cars, pch = 19) -->
-<!-- ``` -->
-<!-- ::: -->
-<!-- ::: {.column data-latex="{0.05\textwidth}"} -->
-<!-- \ -->
-<!-- ::: -->
-<!-- ::: {.column data-latex="{0.2\textwidth}"} -->
-<!-- \scriptsize -->
-
-<!-- ## Data {-} -->
-<!-- The figure on the left-hand side shows the `cars` data. -->
-
-<!-- Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do -->
-<!-- eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut -->
-<!-- enim ad minim veniam, quis nostrud exercitation ullamco laboris -->
-<!-- nisi ut aliquip ex ea commodo consequat. -->
-<!-- ::: -->
-<!-- :::::: -->
-
-
-
-#  Methodology \label{Meth}
-
-## Subsection
-Ideally do not overuse subsections. It equates to bad writing.^[This is an example of a footnote by the way. Something that should also not be overused.]
-
-## Math section
-
-Equations should be written as such:
-
-\begin{align}
-\beta = \sum_{i = 1}^{\infty}\frac{\alpha^2}{\sigma_{t-1}^2} \label{eq1} \\
-\int_{x = 1}^{\infty}x_{i} = 1 \notag
-\end{align}
-
-If you would like to see the equations as you type in Rmarkdown, use $ symbols instead (see this for yourself by adjusted the equation):
-
-$$
-\beta = \sum_{i = 1}^{\infty}\frac{\alpha^2}{\sigma_{t-1}^2} \\
-\int_{x = 1}^{\infty}x_{i} = 1
-$$
-
-Note the equation above - this should appear in math in Rstudio. Writing nice math requires practice. Note I used a forward slashes to make a space in the equations. I can also align equations using  __\&__, and set to numbering only the first line. Now I will have to type ``begin equation'' which is a native \LaTeX command. Here follows a more complicated equation that you want aligned (using \& sign) and numbered:
-
-
-\begin{align}
-	y_t &= c + B(L) y_{t-1} + e_t   \label{eq2}    \\ \notag
-	e_t &= H_t^{1/2}  z_t ; \quad z_t \sim  N(0,I_N) \quad \& \quad H_t = D_tR_tD_t \\ \notag
-		D_t^2 &= {\sigma_{1,t}, \dots, \sigma_{N,t}}   \\ \notag
-		\sigma_{i,t}^2 &= \gamma_i+\kappa_{i,t}  v_{i, t-1}^2 +\eta_i  \sigma_{i, t-1}^2, \quad \forall i \\ \notag
-		R_{t, i, j} &= {diag(Q_{t, i, j}}^{-1}) . Q_{t, i, j} . diag(Q_{t, i, j}^{-1})  \\ \notag
-		Q_{t, i, j} &= (1-\alpha-\beta)  \bar{Q} + \alpha  z_t  z_t'  + \beta  Q_{t, i, j} \notag
-\end{align}
-
-Note that in \ref{eq2} I have aligned the equations by the equal signs. I also want only one tag, and I create spaces using ``quads''.
-
-See if you can figure out how to do complex math using the two examples provided in \ref{eq1} and \ref{eq2}.
-
-<!-- $$ -->
-<!-- This is a commented out section in the writing part. -->
-<!-- Comments are created by highlighting text, amnd pressing CTL+C -->
-<!-- \\begin{align} -->
-<!-- \\beta = \\alpha^2 -->
-<!-- \end{align} -->
-<!-- $$ -->
-
-
-# Including an external plot
-
-You can also include plots produced outside of your Rmarkdown file using the package *knitr*
-
-See below chunk:
-
-```{r, out.width = "205px", fig.cap=figures("Some Figure"), eval = F}
-
-knitr::include_graphics("YourFigureLocation/Logo.png")
-
+```{r regime, results = "asis"}
+bind_rows(
+    Vol_Regime_Table(Roll_Vols) %>% mutate(Sample = "Full sample"),
+    Vol_Regime_Table(Roll_Vols, Exclude = as.Date(c("2020-02-15", "2020-07-31"))) %>% mutate(Sample = "Excl. COVID crash")
+) %>%
+    filter(Name %in% c("Capped SWIX", "Mid Caps", "Small Caps", "MSCI ACWI", "MSCI EM", "S&P 500")) %>%
+    mutate(across(where(is.numeric), ~ .x * 100)) %>%
+    select(Sample, Index = Name, `Vol pre-2020` = AvgVol_Pre, `Vol post-2020` = AvgVol_Post,
+           Change = VolChange, `High-vol days pre (%)` = HighVolDays_Pre, `High-vol days post (%)` = HighVolDays_Post) %>%
+    Print_Table(Caption = "Average rolling volatility (\\%) and share of high-volatility days, before and after 2020 \\label{tab:regime}", Digits = 1)
 ```
 
+## Home-grown or imported volatility?
 
-# Results
+Table \ref{tab:events} measures how far rolling volatility rose around each event, from the level just before the event to its peak during the event and the following month. The two local political shocks were short-lived: Nenegate lifted local volatility by about 6 percentage points, roughly three times the global move, but the 2017 reshuffle and junk downgrade barely moved local volatility at all, suggesting the downgrade was largely priced in. The three global shocks, by contrast, lifted local volatility by about as much as global volatility (roughly 8 to 9 points in 2022 and 2025, and close to 40 points during COVID-19). The large volatility episodes in the local market have therefore been imported, while home-grown political shocks have been smaller and faded quickly.
 
-Tables can be included as follows. Use the _xtable_ (or kable) package for tables. Table placement = H implies Latex tries to place the table Here, and not on a new page (there are, however, very many ways to skin this cat. Luckily there are many forums online!).
-
-
-```{r ShortTable, results = 'asis'}
-
-library(xtable)
-data <- mtcars[1:5,] %>% tibble::as_tibble()
-
-table <- xtable(data, caption = "Short Table Example \\label{tab1}")
-  print.xtable(table,
-             # tabular.environment = "longtable",
-             floating = TRUE,
-             table.placement = 'H',
-             # scalebox = 0.3,
-             comment = FALSE,
-             caption.placement = 'bottom'
-             )
-
+```{r eventtab, results = "asis"}
+Event_Vol_Table(Roll_Vols, Q1_Events, Names = c("Capped SWIX", "MSCI EM", "MSCI ACWI")) %>%
+    mutate(across(where(is.numeric), ~ .x * 100)) %>%
+    Print_Table(Caption = "Rise in rolling 3-month volatility around each event (percentage points) \\label{tab:events}", Digits = 1)
 ```
 
-To reference calculations __in text__, _do this:_ From table \ref{tab1} we see the average value of mpg is `r mean(mtcars[1:5,]$mpg)`.
+## Does local mirror global?
 
-Including tables that span across pages, use the following (note that I add below the table: ``continue on the next page''). This is a neat way of splitting your table across a page.
+Figure \ref{rollcor} shows rolling one-year correlations between weekly Capped SWIX returns and the global indexes. Weekly returns are used because the JSE closes before US markets open, which biases daily correlations downward. The correlation with MSCI ACWI averages around 0.68 and rose to roughly 0.9 during the COVID crisis: in a global sell-off, local and global markets move together, exactly when diversification is needed most. More recently the correlation with emerging markets has fallen, suggesting that part of the 2026 volatility is local or EM-specific.
 
-Use the following default settings to build your own possibly long tables. Note that the following will fit on one page if it can, but cleanly spreads over multiple pages:
-
-```{r LongTable, results = 'asis'}
-
-library(xtable)
-
-data = mtcars %>% tibble::as_tibble()
-  addtorow          <- list()
-  addtorow$pos      <- list()
-  addtorow$pos[[1]] <- c(0)
-  addtorow$command  <- c(paste("\\hline \n",
-                               "\\endhead \n",
-                               "\\hline \n",
-                               "{\\footnotesize Continued on next page} \n",
-                               "\\endfoot \n",
-                               "\\endlastfoot \n",sep=""))
-table <- xtable(data, caption = "Long Table Example")
-  print.xtable(table,
-             tabular.environment = "longtable",
-             floating = FALSE, # Leave this as is.
-             table.placement = 'H', # Leave this as is.
-             booktabs = T, # Aesthetics
-             include.rownames = FALSE,  # Typically you don't want this in a table.
-             add.to.row = addtorow, # For adding the Continued on next page part...
-             comment = FALSE,
-             caption.placement = 'top',  # Where do you want the caption?
-             size="\\fontsize{12pt}{13pt}\\selectfont"  # Size of text in table..
-             )
-# See https://cran.r-project.org/web/packages/xtable/vignettes/xtableGallery.pdf for table inspiration
+```{r rollcor, fig.cap = "Rolling 52-week correlation of Capped SWIX with global indexes (weekly returns) \\label{rollcor}"}
+Plot_Roll_Cor(Roll_Cors)
 ```
 
-\hfill
+## Conditional volatility
 
-<!-- hfill can be used to create a space, like here between text and table. -->
+Ljung-Box tests on squared returns strongly reject the null of no ARCH effects for all three series (p-values close to zero), confirming volatility clustering. Comparing information criteria, the asymmetric GARCH models fit better than the standard GARCH, so I use a GJR-GARCH(1,1) with an AR(1) mean and skewed-t errors. Table \ref{tab:garch} reports the key parameters. Two results stand out. First, the symmetric shock parameter ($\alpha$) is close to zero while the leverage parameter ($\gamma$) is large: volatility rises after bad news but hardly reacts to good news. Second, persistence is high (about 0.97 locally), implying a half-life of a volatility shock of roughly a month. Local volatility shocks fade faster than global (MSCI ACWI) shocks but slower than shocks to the broad EM index.
 
-
-## Huxtable
-
-Huxtable is a very nice package for making working with tables between Rmarkdown and Tex easier.
-
-This cost some adjustment to the Tex templates to make it work, but it now works nicely.
-
-See documentation for this package [here](https://hughjonesd.github.io/huxtable/huxtable.html). A particularly nice addition of this package is for making the printing of regression results a joy (see [here](https://hughjonesd.github.io/huxtable/huxtable.html#creating-a-regression-table)). Here follows an example:
-
-
-If you are eager to use huxtable, comment out the Huxtable table in the Rmd template, and uncomment the colortbl package in your Rmd's root.
-
-Note that I do not include this in the ordinary template, as some latex users have complained it breaks when they build their Rmds (especially those using tidytex - I don't have this problem as I have the full Miktex installed on mine). Up to you, but I strongly recommend installing the package manually and using huxtable. To make this work, uncomment the _Adding additional latex packages_ part in yaml at the top of the Rmd file. Then comment out the huxtable example in the template below this line. Reknit, and enjoy.
-
-```{r, results = 'asis'}
-
-if(!require(huxtable)) install.packages(huxtable)
-library(huxtable)
-data(diamonds, package = 'ggplot2')
-Title <- "Regression Output"
-Label <- "Reg01"
-lm1 <- lm(price ~ carat, diamonds)
-lm2 <- lm(price ~ depth, diamonds)
-lm3 <- lm(price ~ carat + depth, diamonds)
-htab <-
-huxreg(lm1, lm2, lm3,
-                statistics = c(N = "nobs", R2 = "r.squared"),
-                note = "%stars%.") %>%
-  set_caption(Title) %>%
-  set_label(Label)
-# More settings:
-font_size(htab) <- 12
-# Let's change regression names: this is slightly hacky, but works. Comment out this section to see what the default looks like:
-  Names <- c( "Reg1", "Reg2", "Reg3")
-  for(i in 1:length(Names)) {
-    htab[1,][[1+i]] <- Names[i]
-  }
-# Now simply call the table:
-htab
-
+```{r garchtab, results = "asis"}
+Garch_Out$Params %>%
+    rename(Index = Name, alpha = alpha1, beta = beta1, gamma = gamma1, `Half-life (days)` = HalfLife_days) %>%
+    Print_Table(Caption = "GJR-GARCH(1,1) parameters (AR(1) mean, skewed-t errors) \\label{tab:garch}", Digits = 3)
 ```
 
-FYI - R also recently introduced the gt package, which is worthwhile exploring too.
+```{r sigma, fig.cap = "GJR-GARCH conditional volatility, annualised \\label{sigma}"}
+Plot_Garch_Sigma(Garch_Out$Sigma)
+```
 
-# Lists
+## What drives local volatility?
 
-To add lists, simply using the following notation
+Figure \ref{drivers} overlays monthly local GARCH volatility (standardised) on each uncertainty measure, and Figure \ref{heat} reports their correlations. Local volatility moves closely with market-based measures of fear: global equity volatility (correlation of 0.87 with MSCI ACWI volatility), implied volatility (about 0.8 with VIX, V2X and VXEEM) and oil volatility (0.70). By contrast, the news-based policy uncertainty indexes show almost no correlation with local volatility (0.08 for global EPU). Policy uncertainty appears to matter for markets only once it shows up as a shock to global risk appetite or to oil prices.
 
-* This is really simple
+```{r drivers, fig.height = 6.5, fig.cap = "Local volatility vs uncertainty measures (monthly, z-scores) \\label{drivers}"}
+Plot_Drivers_Z(Monthly_Panel)
+```
 
-    + Just note the spaces here - writing in R you have to sometimes be pedantic about spaces...
+```{r heat, fig.height = 6.5, fig.cap = "Correlation of monthly volatility and uncertainty measures \\label{heat}"}
+Plot_Cor_Heatmap(Monthly_Panel)
+```
 
-* Note that Rmarkdown notation removes the pain of defining \LaTeX environments!
+Table \ref{tab:reg} formalises this with a regression of standardised local volatility on the offshore measures. The VIX and oil volatility are the dominant drivers, and the offshore measures alone explain about 73% of the monthly variation in local volatility. Adding local currency volatility (SAVI) barely changes the fit and is not significant. Global EPU enters negatively once the VIX is controlled for, but as the EPU and VIX are correlated this coefficient should be read with caution.
 
-# Conclusion
+```{r regtab, results = "asis"}
+Driver_Regs$Coefs %>%
+    mutate(term = gsub("[.]+", " ", term) %>% trimws()) %>%
+    select(Model, Variable = term, Beta = estimate, `Std. error` = std.error, `t-stat` = statistic, `p-value` = p.value) %>%
+    Print_Table(Caption = paste0("Standardised regression of Capped SWIX GARCH volatility on uncertainty measures (monthly). R-squared: ",
+                                 paste(Driver_Regs$Fit$Model, round(Driver_Regs$Fit$R2, 2), sep = " = ", collapse = "; "),
+                                 " \\label{tab:reg}"), Digits = 2)
+```
 
-I hope you find this template useful. Remember, stackoverflow is your friend - use it to find answers to questions. Feel free to write me a mail if you have any questions regarding the use of this package. To cite this package, simply type citation("Texevier") in Rstudio to get the citation for @Texevier (Note that uncited references in your bibtex file will not be included in References).
+## Implications for Part A
 
-<!-- Make title of bibliography here: -->
-<!-- \newpage -->
+Local volatility has not risen to a permanently higher level, but volatility episodes have become more frequent since 2020, and in 2025-26 local volatility has tracked emerging markets rather than developed markets. These episodes are largely imported: global risk-off shocks and oil price volatility explain most of the variation, and they arrive with high correlation to global markets and with strong asymmetry (volatility rises after losses).
 
-\newpage
+Was the seminar right that oil price volatility and global policy uncertainty are spilling into local equities? Partly. Oil volatility clearly feeds into local volatility, but policy uncertainty only seems to matter once it turns into global market fear. For our funds, the practical takeaway is that the risk worth protecting against is a global sell-off rather than a rand shock, so any risk ballast (lower-volatility stocks, rand-hedge exposure) should be judged on how it holds up in those episodes. That is the lens used to evaluate SafeCore in Part B.
 
-# References {-}
+Three caveats apply. The regressions capture associations rather than causal effects. Because monthly volatility measures are persistent, the regression residuals are likely autocorrelated, so the standard errors are probably understated: the large t-statistics on the VIX and oil volatility remain convincing, but the borderline terms should be read with caution. Finally, local volatility is measured in rand and global volatility in US dollars, so part of any gap between them reflects currency movements rather than the equity markets themselves.
 
-<div id="refs"></div>
-
-
-# Appendix {-}
-
-## Appendix A {-}
-
-Some appendix information here
-
-## Appendix B {-}
-
+<!-- Part B and Part C follow below -->
