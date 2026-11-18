@@ -85,7 +85,7 @@ Q2_HP <- Q2_Hedge_Profile(Q2_Holdings, read_rds("data/Currency_Hedge_Plays.rds")
 
 # Introduction \label{Introduction}
 
-Investors often treat the choice between large, mid and small cap indexes as a choice about company size. This report argues that it is mainly a choice about economic exposure and about the kind of risk being taken. This report compares the three local size indexes on their structure (sector exposure, concentration and active share against the Capped SWIX), their risk (the realised volatility of their constituents, diversification and GARCH volatility) and their returns (rolling returns, risk-adjusted performance and a stratification of months by rand and global stress).
+Investors often treat the choice between large, mid and small cap indexes as a choice about company size. This report argues that it is mainly a choice about economic exposure and about the kind of risk being taken. This report compares the three local size indexes on their structure (sector exposure, concentration and active share against the Capped SWIX), their risk (the realised volatility of their constituents, diversification and GARCH volatility) and their returns (year-by-year leadership, risk-adjusted performance and a stratification of months by rand and global stress).
 
 # Data
 
@@ -127,10 +127,10 @@ Plot_Q2_News_Impact(Q2_News_Impact(Q2_Garch$Fits))
 
 # Returns
 
-Rolling 1-year and 3-year returns relative to the Capped SWIX (Figure \ref{rolling}, where each tile is one month) show how the ranking of the indexes changes over time. Large caps beat the Capped SWIX in 88% of 3-year windows, building most of their lead before 2022. Small caps are the most cyclical: they fell furthest into the COVID-19 crash and then led the market by up to 16% a year during the recovery of 2021-2023. Mid caps lagged the Capped SWIX in about two thirds of 3-year windows.
+Ranking the four indexes by calendar-year return (Figure \ref{rolling}) shows how leadership rotates. Large caps were the best performer in four of the six years from 2015 to 2020. Small caps then led four years running, from 2021 to 2024, starting with a 59% gain in 2021 as the post-COVID recovery and the rebound in value stocks lifted the cheapest part of the market. Mid caps swing the most, ranking first in 2016 and 2019 but last in 2015, 2020, 2022 and 2026 to date.
 
-```{r rolling, fig.height = 3.8, fig.cap = "Rolling returns relative to the Capped SWIX \\label{rolling}"}
-Plot_Q2_Roll_Heat(Q2_Rolling_Returns(Q2_Rets, Years = c(1, 3)))
+```{r rolling, fig.height = 3.6, fig.cap = "Rank of each index by calendar-year return (dots show the return in \\%) \\label{rolling}"}
+Plot_Q2_Bump(Q2_Annual_Returns(Q2_Rets))
 ```
 
 Over the full period (Figure \ref{riskreturn}) large caps returned about 11.0% a year and small caps 10.3%, both ahead of the Capped SWIX (8.7%), while mid caps returned 7.3%. Small caps achieved the best Sharpe ratio (0.25, using STeFI as the risk-free rate) thanks to their low volatility, but also suffered by far the deepest drawdown (-51%), another sign that their measured volatility understates their risk. Mid caps offered the weakest risk-return trade-off.

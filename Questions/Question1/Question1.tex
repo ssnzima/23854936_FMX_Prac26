@@ -513,15 +513,16 @@ DCC & 0.020 & 0.938 &  & 16.091 & -3441.654 & 11.289 &  \\
 volatility?}\label{what-drives-local-volatility}
 
 Figure \ref{drivers} overlays monthly local GARCH volatility
-(standardised) on each uncertainty measure, and Figure \ref{heat}
-reports their correlations. Local volatility moves closely with
-market-based measures of fear: global equity volatility (correlation of
-0.87 with MSCI ACWI volatility), implied volatility (about 0.8 with VIX,
-V2X and VXEEM) and oil volatility (0.70). By contrast, the news-based
-policy uncertainty indexes show almost no correlation with local
-volatility (0.08 for global EPU). Policy uncertainty appears to matter
-for markets only once it shows up as a shock to global risk appetite or
-to oil prices.
+(standardised) on each uncertainty measure, and Figure \ref{heat} maps
+the strongest of their correlations as a network, in which the policy
+uncertainty measures connect only to each other. Local volatility moves
+closely with market-based measures of fear: global equity volatility
+(correlation of 0.87 with MSCI ACWI volatility), implied volatility
+(about 0.8 with VIX, V2X and VXEEM) and oil volatility (0.70). By
+contrast, the news-based policy uncertainty indexes show almost no
+correlation with local volatility (0.08 for global EPU). Policy
+uncertainty appears to matter for markets only once it shows up as a
+shock to global risk appetite or to oil prices.
 
 \begin{figure}[H]
 
@@ -538,7 +539,7 @@ to oil prices.
 
 }
 
-\caption{Correlation of monthly volatility and uncertainty measures \label{heat}}\label{fig:heat}
+\caption{Correlation network of monthly volatility and uncertainty measures: curves join pairs with a correlation of at least 0.5, bundled by family \label{heat}}\label{fig:heat}
 \end{figure}
 
 Table \ref{tab:reg} formalises this with a regression of standardised

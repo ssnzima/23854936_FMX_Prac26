@@ -161,14 +161,14 @@ Plot_DCC_Imported(Imported)
 
 ## What drives local volatility?
 
-Figure \ref{drivers} overlays monthly local GARCH volatility (standardised) on each uncertainty measure, and Figure \ref{heat} reports their correlations. Local volatility moves closely with market-based measures of fear: global equity volatility (correlation of 0.87 with MSCI ACWI volatility), implied volatility (about 0.8 with VIX, V2X and VXEEM) and oil volatility (0.70). By contrast, the news-based policy uncertainty indexes show almost no correlation with local volatility (0.08 for global EPU). Policy uncertainty appears to matter for markets only once it shows up as a shock to global risk appetite or to oil prices.
+Figure \ref{drivers} overlays monthly local GARCH volatility (standardised) on each uncertainty measure, and Figure \ref{heat} maps the strongest of their correlations as a network, in which the policy uncertainty measures connect only to each other. Local volatility moves closely with market-based measures of fear: global equity volatility (correlation of 0.87 with MSCI ACWI volatility), implied volatility (about 0.8 with VIX, V2X and VXEEM) and oil volatility (0.70). By contrast, the news-based policy uncertainty indexes show almost no correlation with local volatility (0.08 for global EPU). Policy uncertainty appears to matter for markets only once it shows up as a shock to global risk appetite or to oil prices.
 
 ```{r drivers, fig.height = 6.5, fig.cap = "Local volatility vs uncertainty measures (monthly, z-scores) \\label{drivers}"}
 Plot_Drivers_Z(Monthly_Panel)
 ```
 
-```{r heat, fig.height = 6.5, fig.cap = "Correlation of monthly volatility and uncertainty measures \\label{heat}"}
-Plot_Cor_Heatmap(Monthly_Panel)
+```{r heat, fig.height = 6.5, fig.cap = "Correlation network of monthly volatility and uncertainty measures: curves join pairs with a correlation of at least 0.5, bundled by family \\label{heat}"}
+Plot_Cor_Bundle(Monthly_Panel, Threshold = 0.5)
 ```
 
 Table \ref{tab:reg} formalises this with a regression of standardised local volatility on the offshore measures. Standard errors are Newey-West, because persistent monthly volatility series leave autocorrelated residuals. The VIX and oil volatility are the dominant and highly significant drivers, and the offshore measures alone explain about 73% of the monthly variation in local volatility. Adding local currency volatility (SAVI) barely changes the fit and is not significant. Global EPU enters negatively once the VIX is controlled for, but it is only borderline significant (p = 0.04) and loses significance when SAVI is added; as EPU and the VIX are correlated, this coefficient should be read with caution.

@@ -48,27 +48,13 @@ Q2_Diversification <- function(ConstVol, Index_Rets, Window = 126) {
         mutate(DivRatio = IdxVol / WtdVol)
 }
 
-# --- Rolling annualised returns ---------------------------------------------------------
-# Built from monthly returns; e.g. the 3-year figure at each month-end is the
-# annualised return over the previous 36 months.
-Q2_Rolling_Returns <- function(Index_Rets, Years = c(1, 3), Bench = "Capped SWIX") {
+# --- Calendar-year returns of each index ------------------------------------------------------
+Q2_Annual_Returns <- function(Index_Rets) {
 
-    M <- Index_Rets %>%
-        mutate(date = lubridate::floor_date(date, "month")) %>%
-        group_by(Name, date) %>% summarise(R = prod(1 + Returns) - 1, .groups = "drop")
-
-    Roll <- map_dfr(Years, function(y) {
-        M %>%
-            group_by(Name) %>% arrange(date) %>%
-            mutate(RollRet = RcppRoll::roll_prod(1 + R, n = 12 * y, fill = NA, align = "right")^(1 / y) - 1,
-                   Horizon = paste0(y, "-year")) %>%
-            ungroup() %>% filter(!is.na(RollRet))
-    })
-
-    Roll %>%
-        left_join(Roll %>% filter(Name == Bench) %>% select(date, Horizon, BenchRet = RollRet),
-                  by = c("date", "Horizon")) %>%
-        mutate(Relative = RollRet - BenchRet)
+    Index_Rets %>%
+        mutate(Year = lubridate::year(date)) %>%
+        group_by(Name, Year) %>%
+        summarise(Ret = prod(1 + Returns) - 1, .groups = "drop")
 }
 
 # --- Full-period risk-return summary -------------------------------------------------------

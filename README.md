@@ -56,7 +56,8 @@ pacman::p_load(tidyverse, lubridate, glue, broom, zoo, tbl2xts, rmsfuns, RcppRol
                rugarch,                                                         # univariate GARCH (Q1, Q2)
                quadprog, RiskPortfolios, Matrix,                                # optimisation and covariance shrinkage (Q1, Q4)
                FactoMineR, sandwich, lmtest,                                    # PCA and Newey-West tests (Q3)
-               ggrepel, cowplot, xtable)                                        # plot labels, plot grids, LaTeX tables
+               ggrepel, cowplot, xtable,                                        # plot labels, plot grids, LaTeX tables
+               ggraph)                                                          # hierarchical edge bundling (Q1)
 # rmgarch (multivariate DCC-GARCH, Q1) is called as rmgarch::... rather than loaded, because it masks dplyr's first() and last()
 ```
 
@@ -509,22 +510,27 @@ Plot_Drivers_Z(Monthly_Panel)
 ![](README_files/figure-gfm/Q1A-panel-1.png)<!-- -->
 
 ``` r
-Plot_Cor_Heatmap(Monthly_Panel)
+Plot_Cor_Bundle(Monthly_Panel, Threshold = 0.5)
 ```
 
-![](README_files/figure-gfm/Q1A-heatmap-1.png)<!-- -->
+![](README_files/figure-gfm/Q1A-network-1.png)<!-- -->
 
-**Interpretation:** Local volatility moves closely with *market-based*
-measures of risk: global equity volatility (0.87 with MSCI ACWI vol,
-0.82 with MSCI EM vol), implied volatility (about 0.8 with VIX, V2X and
-VXEEM) and oil volatility (0.70). By contrast, the *news-based* policy
-uncertainty indexes have almost no correlation with local volatility
-(0.08 for global EPU, 0.00 for Europe). Policy uncertainty therefore
-seems to matter for local equities only once it turns into a shock to
-global risk appetite or to oil prices. It should be noted that SAVI is
-negatively correlated with the EPU indexes (about -0.4), which is more
-likely a trend effect (EPU trended up while rand vol trended down) than
-a meaningful economic relationship.
+**Interpretation:** In the network, each measure sits on the circle with
+its family, and every curve is a monthly correlation of at least 0.5,
+bundled through the family hubs. Local volatility (raspberry) is wired
+to the global equity, implied-volatility and oil measures, while the
+policy-news family connects only to itself. Local volatility moves
+closely with *market-based* measures of risk: global equity volatility
+(0.87 with MSCI ACWI vol, 0.82 with MSCI EM vol), implied volatility
+(about 0.8 with VIX, V2X and VXEEM) and oil volatility (0.70). By
+contrast, the *news-based* policy uncertainty indexes have almost no
+correlation with local volatility (0.08 for global EPU, 0.00 for
+Europe). Policy uncertainty therefore seems to matter for local equities
+only once it turns into a shock to global risk appetite or to oil
+prices. It should be noted that SAVI is negatively correlated with the
+EPU indexes (about -0.4), which is more likely a trend effect (EPU
+trended up while rand vol trended down) than a meaningful economic
+relationship.
 
 Finally, a simple regression of local (Capped SWIX) GARCH vol on the
 offshore measures. All variables are standardised, so each coefficient
@@ -1006,14 +1012,14 @@ factor indexes behave as expected (the Momentum index reaches furthest
 on momentum, Value on value, Low Vol on low volatility), which confirms
 the scores are sensible. Against these reference points, SafeCore’s
 shape is closest to the Momentum and Quality indexes and furthest from
-Low Vol: it is tilted towards **momentum** (+0.21) and **earnings
-quality** (+0.20), with a mild **value** tilt (+0.10), and it has no
-low-volatility tilt (-0.06 on the own score, against +0.33 for the Low
-Vol index). It looks like a quality-momentum fund, not a defensive one.
-The drift chart adds the timing: SafeCore’s momentum exposure rose
-sharply in 2026 while its low-volatility exposure turned negative. This
-connects the pieces: by following momentum, the fund has drifted into
-the gold miners, which is exactly why resources now dominate its risk.
+Low Vol: it is tilted towards momentum (+0.21) and earnings quality
+(+0.20), with a mild value tilt (+0.10), and it has no low-volatility
+tilt (-0.06 on the own score, against +0.33 for the Low Vol index). It
+looks like a quality-momentum fund, not a defensive one. The drift chart
+adds the timing: SafeCore’s momentum exposure rose sharply in 2026 while
+its low-volatility exposure turned negative. This connects the pieces:
+by following momentum, the fund has drifted into the gold miners, which
+is exactly why resources now dominate its risk.
 
 ### Part B conclusion
 
@@ -1317,7 +1323,7 @@ sectors they hold, how concentrated they are, and how different they are
 from the broad market (active share against the Capped SWIX). Then their
 risk: how volatile the individual stocks are compared with the index as
 a whole, and how the indexes behave in a GARCH model. Finally their
-returns: rolling returns over time, a risk-return summary, and a
+returns: which index led in each year, a risk-return summary, and a
 stratification of months by rand and global stress to see which index
 holds up when it matters.
 
@@ -1510,52 +1516,40 @@ news of either sign, which fits a segment driven by company-specific and
 domestic news. Shocks are short-lived in all three (half-lives of 14-17
 trading days).
 
-### 3. Returns: rolling returns and risk-return profiles
+### 3. Returns: who led when, and risk-return profiles
 
-Rolling returns show how the ranking of the indexes changes over time,
-which a single full-period number hides. 1-year and 3-year annualised
-rolling returns are computed from monthly returns and shown relative to
-the Capped SWIX as a heat strip, where each tile is one month.
+A single full-period number hides how the ranking of the indexes changes
+over time. Ranking the four indexes by their return in each calendar
+year shows which segment led when, and how often leadership changes
+hands.
 
 ``` r
-# Monthly returns from daily returns
-Q2_Monthly <- Q2_Rets %>%
-    mutate(date = floor_date(date, "month")) %>%
-    group_by(Name, date) %>%
-    summarise(R = prod(1 + Returns) - 1, .groups = "drop")
+# Calendar-year return of each index, then its rank among the four in each year
+Q2_Annual <- Q2_Rets %>%
+    mutate(Year = year(date)) %>%
+    group_by(Name, Year) %>%
+    summarise(Ret = prod(1 + Returns) - 1, .groups = "drop")
 
-# Annualised 1- and 3-year rolling returns
-Q2_Roll <- map_dfr(c(1, 3), function(y) {
-    Q2_Monthly %>%
-        group_by(Name) %>% arrange(date) %>%
-        mutate(RollRet = RcppRoll::roll_prod(1 + R, n = 12 * y, fill = NA, align = "right")^(1 / y) - 1,
-               Horizon = paste0(y, "-year")) %>%
-        ungroup() %>%
-        filter(!is.na(RollRet))
-})
-
-# ...relative to the Capped SWIX over the same window
-Q2_Roll <- Q2_Roll %>%
-    left_join(Q2_Roll %>% filter(Name == "Capped SWIX") %>% select(date, Horizon, BenchRet = RollRet),
-              by = c("date", "Horizon")) %>%
-    mutate(Relative = RollRet - BenchRet)
-
-Plot_Q2_Roll_Heat(Q2_Roll)
+Plot_Q2_Bump(Q2_Annual)
 ```
 
-![](README_files/figure-gfm/Q2-rolling-1.png)<!-- -->
+![](README_files/figure-gfm/Q2-leadership-1.png)<!-- -->
 
-**Interpretation:** Large caps beat the Capped SWIX over most 3-year
-windows (88% of them), with the lead built mainly before 2022 (the green
-band in the large cap row of the 3-year panel). Small caps are the most
-cyclical: they fell furthest into the COVID crash (a 3-year return of
-about -18%), then led the market by up to 16% a year in the recovery of
-2021-2023 (the darkest green tiles). Mid caps lagged the Capped SWIX in
-most windows (they beat it in only about a third of them).
+**Interpretation:** No size segment stays on top for long, but the
+rotation follows a clear pattern. Large caps were the best of the four
+in four of the six years from 2015 to 2020, including 2018 (the smallest
+fall, -8%) and 2020 (+10% while the others were flat or negative). Small
+caps then led four years running, from 2021 to 2024, starting with a 59%
+gain in 2021 as the post-COVID recovery and the rebound in value stocks
+lifted the cheapest part of the market, before falling to last in 2025
+(+21% against +48% for large caps). Mid caps swing the most: they ranked
+first in 2016 and 2019 but last in 2015, 2020, 2022 and 2026 to date,
+and those weak years explain their lagging long-run return in the
+summary below.
 
-A single full-period summary complements the rolling view: annualised
-return against volatility, with the Sharpe ratio (STeFI as cash) and the
-maximum drawdown.
+A single full-period summary complements the year-by-year view:
+annualised return against volatility, with the Sharpe ratio (STeFI as
+cash) and the maximum drawdown.
 
 ``` r
 # Annualised cash (STeFI) return over the same period, for the Sharpe ratio
@@ -1863,13 +1857,15 @@ Plot_Q3_PCA_Circle(Q3_PCA_F)
 **Interpretation:** The scree plot drops sharply after the first
 component (82.4%), with no other component explaining more than 3.5%, so
 one factor is enough to describe how the industry moves. In the
-correlation circle, almost every peer arrow reaches the edge of the
-circle along the first component (a median correlation of 0.93), meaning
-those funds are almost fully described by it. ABC’s arrow is shorter (a
-correlation of 0.77 with the first component) and points upwards towards
-the second component (0.30, against about zero for the typical peer):
-less of ABC’s return is explained by the industry’s common driver, and
-more by a secondary theme that most peers do not share.
+correlation circle, each line is a peer fund, shaded by how well the two
+components explain it (cos²). Almost every peer line reaches the edge of
+the circle along the first component (a median correlation of 0.93),
+meaning those funds are almost fully described by it. ABC’s arrow is
+shorter (a correlation of 0.77 with the first component) and points
+upwards towards the second component (0.30, against about zero for the
+typical peer): less of ABC’s return is explained by the industry’s
+common driver, and more by a secondary theme that most peers do not
+share.
 
 ### 3. Relative performance over time
 

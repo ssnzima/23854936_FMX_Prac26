@@ -141,27 +141,37 @@ Plot_Q2_News_Impact <- function(NI) {
         theme_sleek() + theme(panel.grid.major.x = element_line(colour = "grey92", linewidth = 0.3))
 }
 
-# --- 6) Heat strip of rolling returns relative to the Capped SWIX ----------------------
-Plot_Q2_Roll_Heat <- function(RollRets) {
+# --- 6) Calendar-year leadership: bump chart of the four indexes' annual return ranks ------
+# (idea from the R Graph Gallery: "bump chart")
+# Each line is an index; its height is its rank among the four in that calendar year
+# (1st = best), and each dot carries that year's return.
+Plot_Q2_Bump <- function(Annual) {
 
-    D <- RollRets %>%
-        filter(Name != "Capped SWIX") %>%
-        mutate(Name = factor(Name, levels = rev(Size_Lvls)),
-               Horizon = factor(paste("Rolling", Horizon), levels = c("Rolling 1-year", "Rolling 3-year")))
-    Lim <- max(abs(D$Relative))
+    Lvls <- c("Large Caps", "Mid Caps", "Small Caps", "Capped SWIX")
+    MaxYear <- max(Annual$Year)
 
-    D %>%
-        ggplot(aes(date, Name, fill = Relative)) +
-        geom_tile(height = 0.9) +
-        facet_wrap(~Horizon, ncol = 1) +
-        scale_fill_gradient2(low = "#E0245E", mid = "white", high = "#2A9D8F", limits = c(-Lim, Lim),
-                             labels = scales::percent_format(accuracy = 1), name = "vs Capped SWIX") +
-        scale_x_years(Breaks = "1 year") +
-        labs(title = "Large caps led until 2022; small caps own the recovery; mid caps mostly lag",
-             subtitle = "Rolling annualised return minus the Capped SWIX's (green = ahead, red = behind)",
-             x = NULL, y = NULL) +
-        theme_sleek() + theme(legend.position = "right", panel.grid.major.y = element_blank(),
-                              legend.title = element_text(size = rel(0.8), colour = "grey35"))
+    D <- Annual %>%
+        group_by(Year) %>% mutate(Rank = rank(-Ret, ties.method = "first")) %>% ungroup() %>%
+        mutate(Name = factor(Name, levels = Lvls), Lab = sprintf("%+.0f", Ret * 100))
+    Ends <- D %>% filter(Year == max(Year))
+    Starts <- D %>% filter(Year == min(Year))
+
+    ggplot(D, aes(Year, Rank, colour = Name, group = Name)) +
+        geom_line(linewidth = 2.4, alpha = 0.85, lineend = "round") +
+        geom_point(size = 9.5, shape = 21, fill = "white", stroke = 2) +
+        geom_text(aes(label = Lab), size = 2.9, fontface = "bold", show.legend = FALSE) +
+        geom_text(data = Ends, aes(x = Year + 0.45, label = Name), hjust = 0, size = 3.6, fontface = "bold", show.legend = FALSE) +
+        geom_text(data = Starts, aes(x = Year - 0.45, label = Name), hjust = 1, size = 3.6, fontface = "bold", show.legend = FALSE) +
+        scale_colour_manual(values = Pal[Lvls], guide = "none") +
+        scale_y_reverse(breaks = 1:4, labels = c("1st", "2nd", "3rd", "4th")) +
+        scale_x_continuous(breaks = unique(D$Year), labels = function(x) ifelse(x == MaxYear, paste0(x, "*"), x),
+                           expand = expansion(add = c(2.8, 2.8))) +
+        labs(title = "Small caps led 2021-2024; large caps led most years before that",
+             subtitle = "Rank of each index by calendar-year return (1st = best); dots show the year's return in %",
+             caption = paste0("* ", MaxYear, " = year to September."), x = NULL, y = NULL) +
+        theme_sleek() +
+        theme(panel.grid.major.y = element_blank(), axis.line.x = element_blank(),
+              axis.text.y = element_text(face = "bold"))
 }
 
 # --- 7) Risk-return summary ---------------------------------------------------------------

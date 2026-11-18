@@ -194,36 +194,45 @@ Plot_Q3_Alpha <- function(Alpha) {
         theme_slide() + theme(panel.grid.major.x = element_line(colour = "grey92", linewidth = 0.3))
 }
 
-# --- 9) Scree plot + variable correlation circle -----
+# --- Scree plot + variable correlation circle (modern version) ------------------------------
 Plot_Q3_PCA_Circle <- function(PCA_F, NComp = 10) {
 
-    Eig <- tibble(Dim = 1:NComp, Share = PCA_F$eig[1:NComp, 2] / 100)
-    g1 <- ggplot(Eig, aes(factor(Dim), Share)) +
-        geom_col(fill = "#5FA8D3", width = 0.7) +
-        geom_line(aes(group = 1), colour = "grey30") + geom_point(colour = "grey30") +
-        geom_text(aes(label = scales::percent(Share, accuracy = 0.1)), vjust = -0.6, size = 3.2, colour = "grey25") +
-        scale_y_continuous(labels = scales::percent_format(accuracy = 1), expand = expansion(mult = c(0, 0.12))) +
+    Eig <- tibble(Dim = 1:NComp, Share = PCA_F$eig[1:NComp, 2] / 100) %>% mutate(First = Dim == 1)
+    g1 <- ggplot(Eig, aes(factor(Dim), Share, fill = First)) +
+        geom_col(width = 0.72) +
+        geom_text(data = Eig %>% filter(Dim <= 3), aes(label = scales::percent(Share, accuracy = 0.1), colour = First),
+                  vjust = -0.5, size = 3.4, fontface = "bold", show.legend = FALSE) +
+        scale_fill_manual(values = c("TRUE" = "#1F3A5F", "FALSE" = "#C9D6E3"), guide = "none") +
+        scale_colour_manual(values = c("TRUE" = "#1F3A5F", "FALSE" = "grey45")) +
+        scale_y_continuous(labels = scales::percent_format(accuracy = 1), expand = expansion(mult = c(0, 0.1))) +
         labs(title = "Scree plot", subtitle = "Share of variation per component", x = "Component", y = NULL) +
         theme_slide()
 
-    V <- as_tibble(PCA_F$var$coord[, 1:2], rownames = "Name") %>% setNames(c("Name", "D1", "D2"))
+    V <- as_tibble(PCA_F$var$coord[, 1:2], rownames = "Name") %>% setNames(c("Name", "D1", "D2")) %>%
+        mutate(Cos2 = D1^2 + D2^2)
     S <- as_tibble(PCA_F$quanti.sup$coord[, 1:2, drop = FALSE], rownames = "Name") %>% setNames(c("Name", "D1", "D2"))
-    Circle <- tibble(a = seq(0, 2 * pi, length.out = 200), x = cos(a), y = sin(a))
+    Ring <- function(r) tibble(a = seq(0, 2 * pi, length.out = 300), x = r * cos(a), y = r * sin(a))
     Pct <- round(PCA_F$eig[1:2, 2], 1)
 
     g2 <- ggplot() +
-        geom_path(data = Circle, aes(x, y), colour = "grey70") +
-        geom_hline(yintercept = 0, colour = "grey85") + geom_vline(xintercept = 0, colour = "grey85") +
-        geom_segment(data = V, aes(x = 0, y = 0, xend = D1, yend = D2), colour = Peer_Col, alpha = 0.5,
-                     arrow = arrow(length = unit(0.12, "cm"))) +
-        geom_segment(data = S, aes(x = 0, y = 0, xend = D1, yend = D2), colour = ABC_Col, linewidth = 1.3,
-                     arrow = arrow(length = unit(0.25, "cm"))) +
-        geom_text(data = S, aes(D1, D2, label = "ABC Fund (supplementary)"), colour = ABC_Col, fontface = "bold",
-                  hjust = 1.05, vjust = -0.8, size = 3.8) +
+        geom_polygon(data = Ring(1), aes(x, y), fill = "#F4F6F9", colour = "grey70", linewidth = 0.4) +
+        geom_path(data = Ring(0.5), aes(x, y), colour = "grey80", linetype = "dotted") +
+        geom_hline(yintercept = 0, colour = "grey85", linewidth = 0.3) + geom_vline(xintercept = 0, colour = "grey85", linewidth = 0.3) +
+        geom_segment(data = V, aes(x = 0, y = 0, xend = D1, yend = D2, colour = Cos2), linewidth = 0.35, alpha = 0.6) +
+        geom_point(data = V, aes(D1, D2, colour = Cos2), size = 1.1, alpha = 0.8) +
+        geom_segment(data = S, aes(x = 0, y = 0, xend = D1, yend = D2), colour = ABC_Col, linewidth = 1.6,
+                     arrow = arrow(length = unit(0.28, "cm"), type = "closed"), lineend = "round") +
+        annotate("label", x = S$D1 - 0.05, y = S$D2 + 0.28, hjust = 1, size = 3.3, colour = ABC_Col, fontface = "bold",
+                 fill = "white",
+                 label = paste0("ABC Fund (supplementary)\nr = ", sprintf("%.2f", S$D1), " with Dim 1, ", sprintf("%.2f", S$D2), " with Dim 2")) +
+        scale_colour_gradient(low = "#C9D6E3", high = "#1F3A5F", limits = c(floor(min(V$Cos2) * 10) / 10, 1), name = "Peer fit (cos²)") +
         coord_equal(xlim = c(-1.05, 1.05), ylim = c(-1.05, 1.05)) +
-        labs(title = "Variable correlation circle", subtitle = "Grey arrows = peer funds",
-             x = paste0("Component 1 (", Pct[1], "%)"), y = paste0("Component 2 (", Pct[2], "%)")) +
-        theme_slide()
+        labs(title = "Variable correlation circle", subtitle = "Each line is a peer fund (darker = better fit)",
+             x = paste0("Dim 1 (", Pct[1], "%)"), y = paste0("Dim 2 (", Pct[2], "%)")) +
+        theme_slide() +
+        theme(panel.grid.major.y = element_blank(), axis.line.x = element_blank(), legend.position = "bottom",
+              legend.key.width = unit(26, "pt"), legend.title = element_text(size = rel(0.75), colour = "grey30"))
 
     cowplot::plot_grid(g1, g2, ncol = 2, rel_widths = c(1, 1))
 }
+

@@ -153,17 +153,17 @@ Slide(Plot_Q3_Drivers(PCA))
 ## One common factor explains 82% of peer returns
 
 :::::: {.columns align=center}
-::: {.column width="62%"}
-```{r pca, fig.width = 9, fig.height = 5}
+::: {.column width="68%"}
+```{r pca, fig.width = 8.6, fig.height = 5.4}
 Plot_Q3_PCA_Circle(PCA_F, NComp = 6)
 ```
 :::
-::: {.column width="38%"}
+::: {.column width="30%"}
 \small
 
-- **Scree plot:** the first component explains **82%** of peer return variation; no other explains more than 3.5%.
-- **Circle:** almost every peer arrow reaches the edge along component 1 (median correlation 0.93).
-- **ABC**, added without influencing the components, has a shorter arrow (0.77) that points towards a second theme (0.30) most peers lack.
+- **Scree:** component 1 explains **82%** of peer returns; no other above 3.5%.
+- **Circle:** almost every peer line reaches the edge along component 1 (median r = 0.93).
+- **ABC** (added without shaping the components) has a shorter arrow (0.77), tilted towards a second theme (0.30) most peers lack.
 :::
 ::::::
 

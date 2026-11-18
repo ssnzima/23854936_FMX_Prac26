@@ -110,32 +110,68 @@ Plot_Drivers_Z <- function(Panel, LocalVol = "Capped SWIX Vol",
         theme_sleek()
 }
 
-# --- Correlation heatmap (lower triangle only) ----------------------------------
-Plot_Cor_Heatmap <- function(Panel) {
+# --- Correlation network: hierarchical edge bundling --------------------------------------
+# (idea from the R Graph Gallery: "hierarchical edge bundling", built with ggraph)
+# Each measure sits on a circle, grouped by family; every pair with a monthly correlation of
+# at least Threshold is joined by a curve bundled through the family hubs, so links between
+# families read as cables. Links to local (Capped SWIX) volatility are highlighted.
+Plot_Cor_Bundle <- function(Panel, Threshold = 0.5, Focus = "Capped SWIX Vol") {
 
-    CM <- cor(Panel %>% select(-date))
-    Lvls <- colnames(CM)
+    Fam <- tribble(
+        ~name,                 ~Group,
+        "Capped SWIX Vol",     "Local equity",
+        "MSCI ACWI Vol",       "Global equity",
+        "MSCI EM Vol",         "Global equity",
+        "VIX",                 "Implied volatility",
+        "V2X",                 "Implied volatility",
+        "VXEEM",               "Implied volatility",
+        "Oil Vol",             "Oil",
+        "MOVE (US bond vol)",  "Rates and currencies",
+        "JPM Global FX vol",   "Rates and currencies",
+        "SAVI USDZAR vol",     "Rates and currencies",
+        "EPU Global",          "Policy news",
+        "EPU Europe",          "Policy news",
+        "EPU US (daily news)", "Policy news") %>%
+        filter(name %in% names(Panel))
+    Fam_Pal <- c("Local equity" = "#E0245E", "Global equity" = "#1F3A5F", "Implied volatility" = "#5FA8D3",
+                 "Oil" = "#C9A227", "Rates and currencies" = "#2A9D8F", "Policy news" = "#8E6C8A")
 
-    CM %>%
-        as_tibble(rownames = "Var1") %>%
-        pivot_longer(-Var1, names_to = "Var2", values_to = "Cor") %>%
-        mutate(i = match(Var1, Lvls), j = match(Var2, Lvls)) %>%
-        filter(i > j) %>%                                   # keep lower triangle only
-        mutate(Var1 = factor(Var1, levels = rev(Lvls)), Var2 = factor(Var2, levels = Lvls)) %>%
-        ggplot(aes(Var2, Var1, fill = Cor)) +
-        geom_tile(colour = "white", linewidth = 0.6) +
-        # White text on the dark (strong correlation) cells so the numbers stay readable
-        geom_text(aes(label = sub("^-0[.]00$", "0.00", sprintf("%.2f", Cor)),
-                      colour = abs(Cor) >= 0.6), size = 2.4, show.legend = FALSE) +
-        scale_colour_manual(values = c("TRUE" = "white", "FALSE" = "grey15")) +
-        # Diverging scale: vivid blue (negative) - white (zero) - pink to deep raspberry (positive)
-        scale_fill_gradientn(colours = c("#0057B8", "#7FB3E6", "#FFFFFF", "#FF8FAB", "#E0245E", "#8A0F3C"),
-                             values = scales::rescale(c(-1, -0.5, 0, 0.35, 0.7, 1)), limits = c(-1, 1)) +
-        labs(title = "How volatility and uncertainty measures move together",
-             subtitle = "Correlation of monthly averages, 2015-2026", x = NULL, y = NULL) +
+    # Hierarchy: origin -> family -> measure (this sets the circular layout and the bundling hubs)
+    Hier  <- bind_rows(tibble(from = "origin", to = unique(Fam$Group)), Fam %>% transmute(from = Group, to = name))
+    Verts <- tibble(name = unique(c(Hier$from, Hier$to))) %>%
+        left_join(Fam, by = "name") %>%
+        mutate(Group = coalesce(Group, name), Group = factor(Group, levels = names(Fam_Pal)))
+    G <- igraph::graph_from_data_frame(Hier, vertices = Verts)
+
+    # Connections: pairs with |correlation| >= Threshold
+    CM <- cor(Panel %>% select(all_of(Fam$name)))
+    Links <- as_tibble(CM, rownames = "from") %>%
+        pivot_longer(-from, names_to = "to", values_to = "r") %>%
+        filter(match(from, Fam$name) < match(to, Fam$name), abs(r) >= Threshold) %>%
+        mutate(Link = ifelse(from == Focus | to == Focus, "Linked to local volatility", "Other links"))
+    Con <- ggraph::get_con(from = match(Links$from, Verts$name), to = match(Links$to, Verts$name),
+                           r = Links$r, Link = Links$Link)
+
+    ggraph::ggraph(G, layout = "dendrogram", circular = TRUE) +
+        ggraph::geom_conn_bundle(data = Con, aes(edge_colour = Link, edge_alpha = r, edge_width = Link), tension = 0.85) +
+        ggraph::geom_node_point(aes(filter = leaf, colour = Group), size = 4.2) +
+        ggraph::geom_node_text(aes(filter = leaf, x = x * 1.09, y = y * 1.09, label = name, colour = Group,
+                                   angle = ifelse(abs(atan2(y, x)) > pi / 2, atan2(y, x) * 180 / pi + 180, atan2(y, x) * 180 / pi),
+                                   hjust = ifelse(abs(atan2(y, x)) > pi / 2, 1, 0)),     # left-half labels read outwards too
+                               size = 3.1, fontface = "bold", show.legend = FALSE) +
+        ggraph::scale_edge_colour_manual(values = c("Linked to local volatility" = "#E0245E", "Other links" = "#7E8C9A"), name = NULL) +
+        ggraph::scale_edge_width_manual(values = c("Linked to local volatility" = 1.3, "Other links" = 0.5), guide = "none") +
+        ggraph::scale_edge_alpha(range = c(0.25, 0.95), name = "Correlation") +
+        scale_colour_manual(values = Fam_Pal, name = NULL) +
+        coord_equal(clip = "off") +
+        expand_limits(x = c(-1.6, 1.6), y = c(-1.45, 1.62)) +
+        labs(title = "Local volatility is wired to market fear and oil, not to policy news",
+             subtitle = paste0("Monthly correlations of at least ", Threshold, " between volatility and uncertainty measures, bundled by family"),
+             x = NULL, y = NULL) +
         theme_sleek() +
-        theme(axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.major.y = element_blank(),
-              axis.line.x = element_blank(), legend.position = "right")
+        theme(axis.text = element_blank(), axis.line.x = element_blank(), panel.grid.major.y = element_blank(),
+              legend.position = "right", legend.box = "vertical") +
+        guides(colour = guide_legend(order = 1, override.aes = list(size = 3)))
 }
 
 # --- Volatility regimes: arrows from pre-2020 to post-2020 average vol -----------------------
