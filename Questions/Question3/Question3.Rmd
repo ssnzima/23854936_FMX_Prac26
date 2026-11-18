@@ -3,14 +3,35 @@ title: "ABC Fund: A Different Kind of Active Manager"
 subtitle: "Peer performance insights for client conversations"
 author: "Sihlelelwe Nzima"
 date: "November 2026"
+aspectratio: 169
+themeoptions: "progressbar=frametitle, numbering=fraction, block=fill"
 output:
-  powerpoint_presentation:
+  beamer_presentation:
+    theme: "metropolis"
     slide_level: 2
+    fig_caption: false
+    latex_engine: pdflatex
+header-includes:
+  - \usepackage[T1]{fontenc}
+  - \usepackage[sfdefault]{FiraSans}
+  - \definecolor{abcnavy}{HTML}{1F3A5F}
+  - \definecolor{abcred}{HTML}{E0245E}
+  - \definecolor{abcgrey}{HTML}{6C7A89}
+  - \setbeamercolor{frametitle}{bg=abcnavy, fg=white}
+  - \setbeamercolor{progress bar}{fg=abcred, bg=abcnavy!25}
+  - \setbeamercolor{title separator}{fg=abcred}
+  - \setbeamercolor{alerted text}{fg=abcred}
+  - \setbeamercolor{itemize item}{fg=abcred}
+  - \setbeamercolor{section page}{fg=abcnavy}
+  - \setbeamerfont{frametitle}{size=\large}
+  - \setbeamerfont{itemize/enumerate body}{size=\footnotesize}
+  - \setbeamercolor{background canvas}{bg=white}
+  - \newcommand{\bignum}[1]{{\fontsize{34}{38}\selectfont\color{abcred}\textbf{#1}}}
 ---
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
-                      fig.width = 10, fig.height = 5.6, dpi = 200)
+                      fig.width = 7.4, fig.height = 5.3, dpi = 220, out.width = "100%")
 
 pacman::p_load(tidyverse, RcppRoll)
 
@@ -29,116 +50,234 @@ Disp      <- Q3_Market_Dispersion(read_rds("data/Monthly_Index_Constituents.rds"
 ABC_M     <- Q3_ABC_Monthly(Funds, Bench, Disp)
 Alpha     <- Q3_Alpha(Funds, Bench, Cash)
 PCA_F     <- Q3_PCA_Prac(Funds, Months = 60)
+
+# On a slide the frame title carries the message, so the chart's own title is dropped
+# and its subtitle (which explains what is plotted) is wrapped to fit the column.
+Slide <- function(g, Wrap = 70) {
+    if (!inherits(g, "ggplot")) return(g)
+    g + labs(title = NULL, subtitle = str_wrap(g$labels$subtitle, Wrap))
+}
 ```
 
-## ABC Fund in three points
+## ABC Fund in three numbers
 
-- **Less market, more manager.** ABC's market beta is about half that of the typical peer, and a smaller share of its returns comes from the market than for 95% of peers.
-- **Consistently strong.** Top-quartile on rolling 3-year returns 70% of the time since 2015, ahead of about 90% of peers on return, risk-adjusted return and drawdown, and an alpha higher than 98% of peers.
-- **Protection when it counts.** In the market's worst months, ABC has lost on average about a third as much as the market (-1.7% vs -4.6%).
+:::::: {.columns align=top}
+::: {.column width="32%"}
+\centering
+\bignum{0.4}
 
-::: notes
-The rest of the deck backs up each of these three points with the industry data.
+\small market beta, against 0.8--0.9 for the typical peer
+
+\vspace{0.4em}
+\textbf{Less market, more manager}
 :::
+::: {.column width="32%"}
+\centering
+\bignum{70\%}
 
-## How much of the industry is just market exposure?
+\small of the time in the top quartile of peers on 3-year returns since 2015
 
-::: notes
-Beta measures how much a fund moves with the market: a beta of 1 means the fund rises and falls one-for-one with the Capped SWIX. Most active managers sit at 0.8-0.9, so most of what clients pay active fees for is market exposure they could get cheaply. ABC's beta has fallen steadily to about 0.4, roughly half the typical peer's.
+\vspace{0.4em}
+\textbf{Consistently strong}
 :::
+::: {.column width="32%"}
+\centering
+\bignum{-1.7\%}
 
+\small average return in the market's worst months, against -4.6\% for the market
+
+\vspace{0.4em}
+\textbf{Protection when it counts}
+:::
+::::::
+
+\vspace{1.2em}
+\begin{center}
+\small The rest of these slides tests each point against the peer data, and checks the manager's dispersion claim.
+\end{center}
+
+# Beyond market beta
+
+## Most active managers are largely market exposure
+
+:::::: {.columns align=center}
+::: {.column width="62%"}
 ```{r beta-box}
-Plot_Q3_Beta_Box(Q3_Beta_Snapshots(Roll_Beta))
+Slide(Plot_Q3_Beta_Box(Q3_Beta_Snapshots(Roll_Beta))) +
+    scale_x_discrete(expand = expansion(add = c(0.6, 2.2)))      # room for the "ABC Fund" label
 ```
-
-## Does ABC offer something other than market beta?
-
-::: notes
-The vertical axis shows how much of each fund's monthly return is explained by the market. For most peers it is over 80%. For ABC it is about 40%, lower than for 95% of peers. The majority of ABC's return comes from its own decisions, not from the market.
 :::
+::: {.column width="38%"}
+\small
 
+- **Beta** measures how far a fund moves with the market: a beta of 1 means it rises and falls one-for-one with the Capped SWIX.
+- Since 2018 the typical peer's beta has been **0.8--0.9**, so much of what clients pay active fees for is market exposure.
+- ABC sits below the peer range every year, and its beta has fallen to **about 0.4**.
+:::
+::::::
+
+## The market explains less than half of ABC's returns
+
+:::::: {.columns align=center}
+::: {.column width="62%"}
 ```{r beta-r2}
-Plot_Q3_Beta_R2(Roll_Beta)
+Slide(Plot_Q3_Beta_R2(Roll_Beta))
 ```
-
-## What drives returns across the industry?
-
-::: notes
-Looking at all peer funds together, a single common driver (essentially the market) explains over 80% of how the whole industry's returns move. For the typical peer it explains close to 90% of returns; for ABC under 60%. In other words, most peers move as one herd, while ABC's returns are driven by different things, which is exactly what makes it useful in a client portfolio alongside other funds.
 :::
+::: {.column width="38%"}
+\small
 
+- **R-squared** is the share of a fund's monthly returns that the market explains.
+- For most peers it is **over 80%**; for ABC it is **about 40%**, lower than for 95% of peers.
+- Most of ABC's return therefore comes from the manager's own positions, not from the market.
+:::
+::::::
+
+## The industry moves as one herd; ABC does not
+
+:::::: {.columns align=center}
+::: {.column width="62%"}
 ```{r drivers}
-Plot_Q3_Drivers(PCA)
+Slide(Plot_Q3_Drivers(PCA))
 ```
-
-## Relative performance over time
-
-::: notes
-The line shows where ABC ranks among peers on 3-year returns at each point in time. It has spent 70% of the time in the top quartile and was in the bottom quartile only briefly. The recent dip in 2025 should be acknowledged: in a strong, broad-based rally a lower-beta fund naturally lags, which is the other side of its protection in falling markets.
 :::
+::: {.column width="38%"}
+\small
 
+- Principal component analysis on five years of peer returns finds the industry's common drivers directly.
+- One driver, essentially the market, explains **87%** of the typical peer's returns.
+- For ABC it explains **59%**, and 95% of peers are more tied to it: ABC adds a different return stream to a portfolio.
+:::
+::::::
+
+## One common factor explains 82% of peer returns
+
+:::::: {.columns align=center}
+::: {.column width="62%"}
+```{r pca, fig.width = 9, fig.height = 5}
+Plot_Q3_PCA_Prac(PCA_F, NComp = 6)
+```
+:::
+::: {.column width="38%"}
+\small
+
+- **Scree plot:** the first component explains **82%** of peer return variation; no other explains more than 3.5%.
+- **Circle:** almost every peer arrow reaches the edge along component 1 (median correlation 0.93).
+- **ABC**, added without influencing the components, has a shorter arrow (0.77) that points towards a second theme (0.30) most peers lack.
+:::
+::::::
+
+# Track record
+
+## A top-quartile fund 70% of the time since 2015
+
+:::::: {.columns align=center}
+::: {.column width="62%"}
 ```{r rank}
-Plot_Q3_Rank(Rank)
+Slide(Plot_Q3_Rank(Rank))
 ```
-
-## Scorecard against peers
-
-::: notes
-Since 2015 ABC has done better than about 9 out of 10 peers on every key measure: higher return, lower volatility, a better Sharpe ratio, a smaller worst loss and less market exposure. Delivering more return with less risk is rare among active managers.
 :::
+::: {.column width="38%"}
+\small
 
+- ABC's rank among peers on rolling 3-year returns (100th percentile = best fund).
+- In the **bottom quartile only 2%** of the time, with its strongest run in 2020--2022.
+- The **2025 dip** (to about the 22nd percentile) is real: a lower-beta fund lags a strong, broad rally, the flip side of its protection.
+:::
+::::::
+
+## Ahead of about 90% of peers on every key measure
+
+:::::: {.columns align=center}
+::: {.column width="62%"}
 ```{r scorecard}
-Plot_Q3_Scorecard(Score)
+Slide(Plot_Q3_Scorecard(Score))
 ```
-
-## The dispersion argument: an honest check
-
-::: notes
-The claim that ABC does especially well when market dispersion is high is not supported by the data: its excess return is, if anything, slightly lower in high-dispersion months, and a formal test finds no relationship. It is better to avoid this claim with clients and use the message on the next slide, which the data strongly supports.
 :::
+::: {.column width="38%"}
+\small
 
+- **Return:** 11.9% a year against 8.2% for the median peer (2015--2025).
+- **Risk:** lower volatility (11.1% vs 13.4%) and half the maximum drawdown (-13.7% vs -26.2%).
+- **Risk-adjusted:** a Sharpe ratio of 0.48 against 0.18. More return with less risk is rare among active managers.
+:::
+::::::
+
+# Protection and skill
+
+## The dispersion claim does not hold up
+
+:::::: {.columns align=center}
+::: {.column width="62%"}
 ```{r dispersion}
-Plot_Q3_Dispersion(ABC_M)
+Slide(Plot_Q3_Dispersion(ABC_M))
 ```
-
-## Where ABC really earns its place
-
-::: notes
-In the market's worst months, the Capped SWIX fell 4.6% on average and the typical peer 3.5%, but ABC only 1.7%. ABC gives up some upside in the very best months, but losing much less in bad months is what compounds into better long-run returns with lower risk. Only 1% of peers protect capital better in falling markets.
 :::
+::: {.column width="38%"}
+\small
 
+- **Dispersion** measures how far apart stock returns are in a month. The claim: ABC does best when it is high.
+- ABC's excess return is, if anything, **slightly lower** in high-dispersion months; regression slopes are not significant (p = 0.71 and 0.99).
+- Drop this claim with clients: the next slide has the message the data supports.
+:::
+::::::
+
+## Where ABC earns its place: when markets fall
+
+:::::: {.columns align=center}
+::: {.column width="62%"}
 ```{r market-regimes}
-Plot_Q3_Market_Regimes(ABC_M)
+Slide(Plot_Q3_Market_Regimes(ABC_M))
 ```
-
-## Skill or luck?
-
-::: notes
-Alpha is the return a fund earned beyond what its market exposure explains. ABC's alpha of about 3.6% a year is higher than 98% of peers. The t-statistic measures how reliably that alpha was earned: above 2 means it is unlikely to be luck. Only 3% of peers clear that bar; ABC sits just below it (significant at the 10% level), so the evidence of skill is strong but should not be overstated. The typical peer's alpha is slightly negative.
 :::
+::: {.column width="38%"}
+\small
 
+- In the market's worst quarter of months the Capped SWIX fell **4.6%** on average, the median peer **3.5%** and ABC only **1.7%**.
+- ABC captures about **39%** of the market's falls against about 75% for the typical peer; only 1% of peers protect better.
+- It gives up some upside in the best months (3.9% vs 6.0%), but losing less in bad months compounds into a better long-run return.
+:::
+::::::
+
+## Skill or luck? ABC's alpha beats 98% of peers
+
+:::::: {.columns align=center}
+::: {.column width="62%"}
 ```{r alpha}
-Plot_Q3_Alpha(Alpha)
+Slide(Plot_Q3_Alpha(Alpha))
 ```
+:::
+::: {.column width="38%"}
+\small
+
+- **Alpha** is the return earned beyond what market exposure explains.
+- ABC: **3.6% a year**, higher than 98% of peers; the median peer's alpha is slightly negative (-0.3%).
+- A t-statistic of 1.76 (p = 0.08) is just below the usual bar of 2, which only 3% of peers clear: strong evidence, not proof.
+:::
+::::::
 
 ## Why include ABC in client portfolios
 
+:::::: {.columns align=top}
+::: {.column width="50%"}
+\small
+
+**The case**
+
 - **A genuine diversifier:** most of its return comes from the manager's own decisions, not from the market or the industry herd.
-- **Downside protection:** it loses far less than peers and the market when markets fall, which supports long-term compounding.
-- **Proven over time:** strong peer rankings across most of the last decade on both return and risk, and an alpha of about 3.6% a year, one of the highest in the peer group.
-- **Points to note:** ABC tends to lag in the strongest rallies (as in 2025), past performance does not guarantee future results, and benchmark comparisons start in 2015.
-
-::: notes
-Data notes: peer returns are winsorised each month at the 1st and 99th percentiles (one fund reports -55% in its final month before closing). Benchmark-based measures use the Capped SWIX from January 2015. Peers that closed during the period are included while they were active.
+- **Downside protection:** it loses far less than peers and the market when markets fall.
+- **Proven over time:** top-quartile 70% of the time, and an alpha of about 3.6% a year, among the highest in the peer group.
 :::
+::: {.column width="46%"}
+\small
 
+**Points to note**
 
-## Technical appendix: principal component analysis
+- ABC tends to lag in the strongest rallies, as in 2025.
+- The dispersion argument is not supported and should not be used.
+- Past performance does not guarantee future results.
 
-::: notes
-<!-- For the more technical audience. The scree plot shows that one component explains about 82% of the variation in peer returns, with every other component explaining less than 4%. In the correlation circle, each grey arrow is a peer fund: almost all point to the edge of the circle along the first component, meaning they are almost entirely explained by it. ABC (added as a supplementary variable, so it does not influence the components) has a shorter arrow that points upwards, meaning less of its return is explained by the common driver and more by the secondary one. -->
+\vspace{0.6em}
+\scriptsize \color{abcgrey} Data notes: peer returns are winsorised each month at the 1st and 99th percentiles (one fund reports -55\% in its final month before closing). Benchmark-based measures use the Capped SWIX from January 2015. Funds that closed are included while they were active.
 :::
-
-```{r pca-appendix}
-Plot_Q3_PCA_Prac(PCA_F)
-```
+::::::

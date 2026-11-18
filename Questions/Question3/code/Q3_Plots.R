@@ -194,16 +194,16 @@ Plot_Q3_Alpha <- function(Alpha) {
         theme_slide() + theme(panel.grid.major.x = element_line(colour = "grey92", linewidth = 0.3))
 }
 
-# --- 9) Technical appendix: scree plot + variable correlation circle -----
-Plot_Q3_PCA_Prac <- function(PCA_F) {
+# --- 9) Scree plot + variable correlation circle -----
+Plot_Q3_PCA_Prac <- function(PCA_F, NComp = 10) {
 
-    Eig <- tibble(Dim = 1:10, Share = PCA_F$eig[1:10, 2] / 100)
+    Eig <- tibble(Dim = 1:NComp, Share = PCA_F$eig[1:NComp, 2] / 100)
     g1 <- ggplot(Eig, aes(factor(Dim), Share)) +
         geom_col(fill = "#5FA8D3", width = 0.7) +
         geom_line(aes(group = 1), colour = "grey30") + geom_point(colour = "grey30") +
         geom_text(aes(label = scales::percent(Share, accuracy = 0.1)), vjust = -0.6, size = 3.2, colour = "grey25") +
         scale_y_continuous(labels = scales::percent_format(accuracy = 1), expand = expansion(mult = c(0, 0.12))) +
-        labs(title = "Scree plot", subtitle = "Share of peer return variation per component", x = "Component", y = NULL) +
+        labs(title = "Scree plot", subtitle = "Share of variation per component", x = "Component", y = NULL) +
         theme_slide()
 
     V <- as_tibble(PCA_F$var$coord[, 1:2], rownames = "Name") %>% setNames(c("Name", "D1", "D2"))
