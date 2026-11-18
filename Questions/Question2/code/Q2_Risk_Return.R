@@ -5,7 +5,7 @@
 # --- Realised volatility of the constituents, month by month -----------------------
 # For every stock: rolling 126-day (6-month) annualised volatility of daily returns,
 # sampled at month-ends. Each month, the stocks in each index are matched to these
-# values, and I keep the median, inter-quartile range and weighted average.
+# values, keeping the median, inter-quartile range and weighted average.
 # Daily returns above 100% in absolute value are dropped as data errors.
 Q2_Constituent_Vol <- function(Holdings, Stock_Rets, Window = 126, MinObs = 100) {
 

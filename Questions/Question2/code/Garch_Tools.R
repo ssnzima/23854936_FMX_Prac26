@@ -1,5 +1,5 @@
-# Q1A_Garch.R
-# Conditional volatility (GARCH) for Q1 Part A, in three steps:
+# Garch_Tools.R
+# Conditional volatility (GARCH), shared with Question 1, in three steps:
 # 1) test for ARCH effects, 2) compare candidate GARCH specs, 3) extract sigma.
 
 # --- 1) ARCH effects: Ljung-Box on squared returns -----------------------------

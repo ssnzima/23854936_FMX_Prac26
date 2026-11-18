@@ -43,7 +43,7 @@ Q1B_Own_Scores <- function(Stock_Rets, Factor_Scores, MinObs = 126) {   # need a
 }
 
 # --- Agreement with the vendor, month by month -----------------------------------
-# Spearman (rank) correlation: does the vendor rank stocks the same way we do?
+# Spearman (rank) correlation: does the vendor rank stocks the same way as the own scores?
 Q1B_Score_Agreement <- function(Own, Factor_Scores) {
 
     Vendor <- Factor_Scores %>%
@@ -98,7 +98,7 @@ Q1B_Port_Exposures <- function(All_Scores, SC_Holdings, Index_Constituents,
 
 # --- Active exposures: relative to the Capped SWIX --------------------------------
 # The vendor's scores turn out to be benchmark-relative (the Capped SWIX scores ~0
-# on every vendor factor), while our own scores are standardised across all stocks.
+# on every vendor factor), while the own scores are standardised across all stocks.
 # Subtracting the Capped SWIX exposure puts everything on the same footing and
 # answers the manager's real question: how does the fund differ from its benchmark?
 Q1B_Active_Exposures <- function(Exposures, Bench = "Capped SWIX") {

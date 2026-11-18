@@ -42,7 +42,7 @@ Q3_PCA <- function(Funds, Months = 60) {
 # "supplementary" variable: it is projected onto the components (its correlation with
 # each component is computed) but plays no part in building them. This gives the
 # standard scree plot and variable correlation circle.
-Q3_PCA_Prac <- function(Funds, Months = 60) {
+Q3_PCA_FactoMineR <- function(Funds, Months = 60) {
 
     YMs <- sort(unique(Funds$YM)) %>% tail(Months)
 

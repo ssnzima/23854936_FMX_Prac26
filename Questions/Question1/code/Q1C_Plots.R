@@ -148,26 +148,45 @@ Plot_LeadLag <- function(LL) {
                               panel.grid.major.y = element_line(colour = "grey95", linewidth = 0.3))
 }
 
-# --- 8) High vs low macro regimes (dumbbells) ----------------------------------------
+# --- Macro regimes as an arrow map ------------------------------------------------------
+# (idea from the R Graph Gallery: "connected scatterplot" with arrows)
+# Same axes as the opportunity map: each arrow runs from the average month in a macro
+# measure's lowest third (calm) to its highest third (stressed), so its direction shows
+# whether that kind of stress pushes the market towards a stock-picker's or a macro-driven market.
 Plot_Macro_Regimes <- function(Reg) {
 
-    W <- Reg %>% pivot_wider(names_from = Regime, values_from = Value)
+    Grp <- c("VIX" = "Equity fear", "VXEEM" = "Equity fear", "Oil Vol" = "Oil",
+             "MOVE (US bond vol)" = "Rates and currencies", "JPM Global FX vol" = "Rates and currencies",
+             "SAVI USDZAR vol" = "Rates and currencies", "EPU Global" = "Policy uncertainty")
+    Cols <- c("Equity fear" = "#E76F51", "Rates and currencies" = "#1F3A5F", "Oil" = "#C9A227",
+              "Policy uncertainty" = "grey55")
 
-    Reg %>%
-        mutate(Var = factor(Var, levels = rev(unique(Reg$Var))),
-               Regime = factor(Regime, levels = c("Low", "High"),
-                               labels = c("Low third of months", "High third of months"))) %>%
-        ggplot(aes(Value, Var)) +
-        geom_segment(data = W %>% mutate(Var = factor(Var, levels = rev(unique(Reg$Var)))),
-                     aes(x = Low, xend = High, y = Var, yend = Var), colour = "grey75", linewidth = 1.3,
-                     inherit.aes = FALSE) +
-        geom_point(aes(colour = Regime), size = 3) +
-        facet_wrap(~Measure, scales = "free_x") +
-        scale_colour_manual(values = c("Low third of months" = "#5FA8D3", "High third of months" = "#E0245E")) +
-        # dispersion (~2%) shown as a percentage, correlation (~0.2) as a plain number
-        scale_x_continuous(labels = function(x) ifelse(abs(x) < 0.1, scales::percent(x, accuracy = 0.1), sprintf("%.2f", x))) +
-        labs(title = "Macro stress raises correlation more reliably than dispersion",
-             subtitle = "Average dispersion and pairwise correlation when each macro measure is in its lowest vs highest third",
-             x = NULL, y = NULL) +
+    W <- Reg %>%
+        pivot_wider(names_from = c(Measure, Regime), values_from = Value) %>%
+        mutate(Group = factor(Grp[Var], levels = names(Cols)))
+    mx <- mean(c(W$Dispersion_Low, W$Dispersion_High)); my <- mean(c(W$Correlation_Low, W$Correlation_High))
+
+    ggplot(W) +
+        annotate("rect", xmin = mx, xmax = Inf, ymin = -Inf, ymax = my, fill = "#2A9D8F", alpha = 0.08) +
+        annotate("rect", xmin = -Inf, xmax = mx, ymin = my, ymax = Inf, fill = "#E0245E", alpha = 0.06) +
+        geom_vline(xintercept = mx, colour = "grey60", linewidth = 0.3) +
+        geom_hline(yintercept = my, colour = "grey60", linewidth = 0.3) +
+        geom_point(aes(Dispersion_Low, Correlation_Low, colour = Group), shape = 21, fill = "white", size = 2.6, stroke = 1) +
+        geom_segment(aes(x = Dispersion_Low, y = Correlation_Low, xend = Dispersion_High, yend = Correlation_High, colour = Group),
+                     arrow = arrow(length = unit(0.22, "cm"), type = "closed"), linewidth = 0.9) +
+        ggrepel::geom_label_repel(aes(Dispersion_High, Correlation_High, label = Var, colour = Group), size = 2.9,
+                                  fill = alpha("white", 0.85), label.size = 0, fontface = "bold", seed = 3,
+                                  box.padding = 0.6, min.segment.length = 0.3, show.legend = FALSE) +
+        annotate("text", x = Inf, y = -Inf, label = "Stock-picker's market\n(high dispersion, low correlation)",
+                 hjust = 1.05, vjust = -0.4, size = 3, colour = "#2A9D8F", fontface = "italic") +
+        annotate("text", x = -Inf, y = Inf, label = "Macro-driven market\n(low dispersion, high correlation)",
+                 hjust = -0.05, vjust = 1.3, size = 3, colour = "#E0245E", fontface = "italic") +
+        scale_colour_manual(values = Cols) +
+        scale_x_continuous(labels = scales::percent_format(accuracy = 0.1), expand = expansion(mult = 0.12)) +
+        scale_y_continuous(expand = expansion(mult = 0.12)) +
+        labs(title = "Macro stress raises correlation; bond and FX stress also squeezes dispersion",
+             subtitle = "Average month in each macro measure's calmest third (circle) and most stressed third (arrow head)",
+             x = "Dispersion (avg daily weighted CSV)", y = "Average pairwise correlation") +
         theme_sleek() + theme(panel.grid.major.x = element_line(colour = "grey92", linewidth = 0.3))
 }
+

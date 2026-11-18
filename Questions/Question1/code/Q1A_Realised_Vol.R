@@ -76,7 +76,7 @@ Roll_Cor_Weekly <- function(df, LocalName = "Capped SWIX",
 # Pre  = rolling vol on the last day before the event starts
 # Peak = highest rolling vol from the start of the event to 30 days after it ends
 # If local-only events lift local vol much more than global vol, while global events
-# lift both, that tells us which shocks are home-grown and which are imported.
+# lift both, this shows which shocks are home-grown and which are imported.
 Event_Vol_Table <- function(RollVolDF, Events, Names = c("Capped SWIX", "MSCI EM", "MSCI ACWI")) {
 
     Events %>%

@@ -72,3 +72,16 @@ Garch_Fit_Sigma <- function(df, Names, Model = "gjrGARCH") {
 
     list(Sigma = Sigma, Params = Params, Fits = Fits)
 }
+
+# --- 4) Diagnostics: has the model absorbed the volatility clustering? ------------------------
+# Ljung-Box tests on the standardised residuals (z) and squared standardised residuals (z^2).
+# A well-specified GARCH leaves no autocorrelation in z^2 (high p-values).
+Garch_Diagnostics <- function(Fits, Lag = 12) {
+
+    imap_dfr(Fits, function(fit, n) {
+        z <- as.numeric(rugarch::residuals(fit, standardize = TRUE))
+        tibble(Name = n,
+               `LB p-value (z)`   = Box.test(z,   lag = Lag, type = "Ljung-Box")$p.value,
+               `LB p-value (z^2)` = Box.test(z^2, lag = Lag, type = "Ljung-Box")$p.value)
+    })
+}

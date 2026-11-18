@@ -8,7 +8,7 @@
 # UncLevels: output of Q1A_Uncertainty_Levels()
 Q1A_Monthly_Panel <- function(SigmaDF, UncLevels, OilVolWindow = 21) {
 
-    # Oil: we care about oil *volatility*, not the oil price level
+    # Oil: the measure of interest is oil *volatility*, not the oil price level
     OilVol <-
         UncLevels %>%
         filter(Name == "Brent Oil") %>%
@@ -39,6 +39,8 @@ Q1A_Monthly_Panel <- function(SigmaDF, UncLevels, OilVolWindow = 21) {
 # All variables are standardised (z-scores) so the coefficients are comparable:
 # "a 1 sd rise in X is associated with a beta sd rise in local vol".
 # Model 1 = offshore drivers only; Model 2 adds local currency vol (SAVI).
+# Newey-West (HAC) standard errors, because the monthly volatility series are persistent
+# and the residuals autocorrelated.
 Q1A_Driver_Regressions <- function(Panel, LocalVol = "Capped SWIX Vol",
                                    Offshore = c("VIX", "EPU Global", "MOVE (US bond vol)", "Oil Vol"),
                                    Local = "SAVI USDZAR vol") {
@@ -53,8 +55,8 @@ Q1A_Driver_Regressions <- function(Panel, LocalVol = "Capped SWIX Vol",
     m2 <- lm(f2, data = Z)
 
     Coefs <-
-        bind_rows(broom::tidy(m1) %>% mutate(Model = "Offshore only"),
-                  broom::tidy(m2) %>% mutate(Model = "Offshore + SAVI")) %>%
+        bind_rows(broom::tidy(lmtest::coeftest(m1, vcov. = sandwich::NeweyWest(m1))) %>% mutate(Model = "Offshore only"),
+                  broom::tidy(lmtest::coeftest(m2, vcov. = sandwich::NeweyWest(m2))) %>% mutate(Model = "Offshore + SAVI")) %>%
         filter(term != "(Intercept)")
 
     Fit <- tibble(Model = c("Offshore only", "Offshore + SAVI"),

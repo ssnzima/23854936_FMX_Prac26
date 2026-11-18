@@ -56,27 +56,34 @@ Plot_Growth_DD <- function(GDD) {
     cowplot::plot_grid(g1, g2, ncol = 1, rel_heights = c(1.25, 1), align = "v", axis = "lr")
 }
 
-# --- Rolling vol vs the benchmark: two lines with the gap between them filled ---------
-# (idea from the R Graph Gallery: "line chart with filled intersection")
+# --- Rolling vol vs the benchmark: the gap itself, around a zero line -------------------
+# Fund volatility minus Capped SWIX volatility (rolling 1-year, annualised), in percentage
+# points: pink above zero = more volatile than the benchmark, teal below = smoother.
 Plot_Vol_Ratio <- function(VR, Names = c("SafeCore", "Low Vol")) {
 
     D <- VR %>%
         filter(Name %in% Names) %>%
-        mutate(Fund = RollVol * sqrt(252), Bench = BenchVol * sqrt(252),
+        mutate(Gap = (RollVol - BenchVol) * sqrt(252) * 100,
                Name = factor(Name, levels = Names, labels = paste(Names, "vs Capped SWIX")))
+    Top <- max(abs(D$Gap))
 
     ggplot(D, aes(date)) +
-        geom_ribbon(aes(ymin = Bench, ymax = pmax(Fund, Bench), fill = "More volatile than the benchmark"), alpha = 0.45) +
-        geom_ribbon(aes(ymin = pmin(Fund, Bench), ymax = Bench, fill = "Less volatile than the benchmark"), alpha = 0.45) +
-        geom_line(aes(y = Bench, colour = "Capped SWIX"), linewidth = 0.45) +
-        geom_line(aes(y = Fund, colour = "Fund"), linewidth = 0.6) +
+        geom_ribbon(aes(ymin = 0, ymax = pmax(Gap, 0)), fill = "#E0245E", alpha = 0.75) +
+        geom_ribbon(aes(ymin = pmin(Gap, 0), ymax = 0), fill = "#2A9D8F", alpha = 0.75) +
+        geom_hline(yintercept = 0, colour = "grey20", linewidth = 0.5) +
+        # zone labels once, in the clear right-hand corners of the top panel
+        geom_text(data = tibble(Name = factor(levels(D$Name)[1], levels = levels(D$Name)), date = max(D$date),
+                                y = c(Top, -Top), Lab = c("More volatile than the Capped SWIX", "Smoother than the Capped SWIX")),
+                  aes(date, y, label = Lab, colour = Lab, vjust = ifelse(y > 0, 1, 0)), hjust = 1, size = 3,
+                  fontface = "bold", show.legend = FALSE) +
+        scale_colour_manual(values = c("More volatile than the Capped SWIX" = "#E0245E", "Smoother than the Capped SWIX" = "#2A9D8F")) +
         facet_wrap(~Name, ncol = 1) +
-        scale_fill_manual(values = c("More volatile than the benchmark" = "#E0245E", "Less volatile than the benchmark" = "#2A9D8F")) +
-        scale_colour_manual(values = c("Capped SWIX" = "grey30", "Fund" = "#1F3A5F")) +
-        scale_x_years() + scale_y_pct() +
+        scale_x_years() +
+        scale_y_continuous(limits = c(-Top, Top) * 1.05, labels = function(x) paste0(sprintf("%+.0f", x), "pp")) +
         labs(title = "SafeCore is rarely smoother than its benchmark; Low Vol always is",
-             subtitle = "Rolling 1-year volatility, annualised", x = NULL, y = NULL) +
-        theme_sleek() + guides(colour = guide_legend(order = 1), fill = guide_legend(order = 2))
+             subtitle = "Rolling 1-year volatility minus Capped SWIX volatility (annualised, percentage points)",
+             x = NULL, y = NULL) +
+        theme_sleek()
 }
 
 # --- 3) Capture "quadrant" scatter ---------------------------------------------------

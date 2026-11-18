@@ -49,7 +49,7 @@ Score     <- Q3_Scorecard(Funds, Bench, Cash)
 Disp      <- Q3_Market_Dispersion(read_rds("data/Monthly_Index_Constituents.rds"), read_rds("data/Stock_Returns_Daily.rds"))
 ABC_M     <- Q3_ABC_Monthly(Funds, Bench, Disp)
 Alpha     <- Q3_Alpha(Funds, Bench, Cash)
-PCA_F     <- Q3_PCA_Prac(Funds, Months = 60)
+PCA_F     <- Q3_PCA_FactoMineR(Funds, Months = 60)
 
 # On a slide the frame title carries the message, so the chart's own title is dropped
 # and its subtitle (which explains what is plotted) is wrapped to fit the column.
@@ -155,7 +155,7 @@ Slide(Plot_Q3_Drivers(PCA))
 :::::: {.columns align=center}
 ::: {.column width="62%"}
 ```{r pca, fig.width = 9, fig.height = 5}
-Plot_Q3_PCA_Prac(PCA_F, NComp = 6)
+Plot_Q3_PCA_Circle(PCA_F, NComp = 6)
 ```
 :::
 ::: {.column width="38%"}

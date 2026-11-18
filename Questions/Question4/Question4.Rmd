@@ -81,10 +81,6 @@ Port     <- Q4_Backtest(Weights, Univ)
 Frontier <- Q4_Latest_Frontier(Univ, Cash, Weights)
 ```
 
-<!-- ############################## -->
-<!-- # Start Writing here: -->
-<!-- ############################## -->
-
 # Introduction \label{Introduction}
 
 A balanced index fund aims to deliver steady long-term growth by combining equities, bonds and commodities, with the mix set by rules rather than by an active manager. This report constructs such a fund from traded local and global indexes under a mandate with five limits: bonds and credit at most 25%, equities at most 75%, commodities at most 15%, any single asset at most 35%, and global exposure at most 60%. The fund is long-only and rebalanced quarterly, uses at least ten years of data for its covariance and return estimates, and holds no asset with less than five years of returns. Beyond building the fund, the report asks three further questions: what the mandate costs, which of its rules actually shape the portfolio, and whether optimisation beats simple diversification once costs and risk are considered.

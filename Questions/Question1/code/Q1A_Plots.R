@@ -180,3 +180,38 @@ Plot_Event_Vol <- function(EventLong) {
              x = NULL, y = NULL, fill = NULL) +
         theme_sleek() + theme(panel.grid.major.x = element_line(colour = "grey92", linewidth = 0.3))
 }
+
+# --- DCC: local conditional volatility, coloured by the share that is imported -------------
+# Each weekly point's height is the Capped SWIX's conditional volatility (from the DCC model's
+# univariate GJR-GARCH), and its colour is the share of that week's conditional variance that
+# moves with global markets (MSCI ACWI and MSCI EM together).
+Plot_DCC_Imported <- function(Imported, Events = Q1_Events) {
+
+    D <- Imported %>% arrange(date) %>% mutate(xend = lead(date), yend = lead(LocalVol)) %>% filter(!is.na(xend))
+    Avg <- mean(Imported$Share)
+
+    # Label the most imported and the most home-grown episodes around the shaded events
+    Lab <- Events %>%
+        mutate(Pt = map2(Start, End, ~ Imported %>% filter(date >= .x - 7, date <= .y + 30) %>%
+                             summarise(Share = mean(Share), date = date[which.max(LocalVol)], LocalVol = max(LocalVol)))) %>%
+        unnest(Pt) %>%
+        mutate(Txt = paste0(Label, ": ", round(Share * 100), "% imported"))
+
+    ggplot(D) +
+        geom_events(MinDate = min(D$date)) +
+        geom_segment(aes(x = date, y = LocalVol, xend = xend, yend = yend, colour = Share), linewidth = 1.1, lineend = "round") +
+        ggrepel::geom_label_repel(data = Lab, aes(date, LocalVol, label = Txt), size = 2.7, seed = 4,
+                                  fill = alpha("white", 0.9), label.size = 0, colour = "grey20",
+                                  nudge_y = 0.06, min.segment.length = 0, segment.colour = "grey50") +
+        scale_colour_gradientn(colours = c("#2A9D8F", "#8CC5BC", "#A9B2BC", "#F08FAE", "#E0245E", "#8A0F3C"),
+                               values = scales::rescale(c(0.35, 0.45, Avg, 0.58, 0.64, 0.70)),
+                               limits = c(0.34, 0.70), labels = scales::percent_format(accuracy = 1),
+                               name = "Share of local variance\nexplained by global markets") +
+        scale_x_years() + scale_y_pct() +
+        labs(title = "About half of local volatility is imported; in global crashes, two-thirds",
+             subtitle = "Capped SWIX DCC-GARCH conditional volatility (weekly, annualised), coloured by imported share",
+             caption = Events_Caption(MinDate = min(D$date)), x = NULL, y = NULL) +
+        theme_sleek() +
+        theme(legend.position = "right", legend.title = element_text(size = rel(0.75), colour = "grey30"),
+              legend.key.height = unit(26, "pt"))
+}

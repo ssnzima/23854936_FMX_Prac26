@@ -16,7 +16,7 @@ TRI_to_Returns <- function(df) {
 
 # --- Local + global equity index returns ---------------------------------------
 # Local series are already returns (in ZAR). Global series are TRIs in USD, so
-# we convert them. Note: we compare the *pattern* of volatility across markets -
+# they are converted. Note: the comparison is of the *pattern* of volatility across markets -
 # the currency layer is picked up separately with the SAVIUSD (USDZAR vol) index.
 Q1A_Equity_Returns <- function(Idx_Daily, MSCI, Global_Idx, StartDate = as.Date("2015-01-01")) {
 

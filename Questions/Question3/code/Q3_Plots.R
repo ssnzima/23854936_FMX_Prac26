@@ -195,7 +195,7 @@ Plot_Q3_Alpha <- function(Alpha) {
 }
 
 # --- 9) Scree plot + variable correlation circle -----
-Plot_Q3_PCA_Prac <- function(PCA_F, NComp = 10) {
+Plot_Q3_PCA_Circle <- function(PCA_F, NComp = 10) {
 
     Eig <- tibble(Dim = 1:NComp, Share = PCA_F$eig[1:NComp, 2] / 100)
     g1 <- ggplot(Eig, aes(factor(Dim), Share)) +

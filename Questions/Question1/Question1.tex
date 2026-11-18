@@ -424,7 +424,10 @@ effects for all three series (p-values close to zero), confirming
 volatility clustering. Comparing information criteria, the asymmetric
 GARCH models fit better than the standard GARCH, so a GJR-GARCH(1,1) is
 used with an AR(1) mean and skewed-t errors. Table \ref{tab:garch}
-reports the key parameters. Two results stand out. First, the symmetric
+reports the key parameters and Ljung-Box tests on the standardised
+residuals: the squared standardised residuals show no remaining
+clustering (p-values of 0.71-0.99), confirming that the model captures
+the volatility dynamics. Two results stand out. First, the symmetric
 shock parameter (\(\alpha\)) is close to zero while the leverage
 parameter (\(\gamma\)) is large: volatility rises after bad news but
 hardly reacts to good news. Second, persistence is high (about 0.97
@@ -434,14 +437,14 @@ slower than shocks to the broad EM index.
 
 \begin{table}[H]
 \centering
-\caption{GJR-GARCH(1,1) parameters (AR(1) mean, skewed-t errors) \label{tab:garch}} 
-\begin{tabular}{lrrrrr}
+\caption{GJR-GARCH(1,1) parameters (AR(1) mean, skewed-t errors) and Ljung-Box (12 lags) p-values for the standardised residuals \label{tab:garch}} 
+\begin{tabular}{lrrrrrrr}
   \toprule
-Index & alpha & beta & gamma & Persistence & Half-life (days) \\ 
+Index & alpha & beta & gamma & Persistence & Half-life (days) & LB p (z) & LB p (z squared) \\ 
   \midrule
-Capped SWIX & 0.002 & 0.903 & 0.132 & 0.969 & 21.970 \\ 
-  MSCI ACWI & 0.000 & 0.865 & 0.232 & 0.976 & 28.316 \\ 
-  MSCI EM & 0.013 & 0.848 & 0.181 & 0.949 & 13.277 \\ 
+Capped SWIX & 0.002 & 0.903 & 0.132 & 0.969 & 21.970 & 0.047 & 0.987 \\ 
+  MSCI ACWI & 0.000 & 0.865 & 0.232 & 0.976 & 28.316 & 0.447 & 0.713 \\ 
+  MSCI EM & 0.013 & 0.848 & 0.181 & 0.949 & 13.277 & 0.620 & 0.801 \\ 
    \bottomrule
 \end{tabular}
 \end{table}
@@ -453,6 +456,57 @@ Capped SWIX & 0.002 & 0.903 & 0.132 & 0.969 & 21.970 \\
 }
 
 \caption{GJR-GARCH conditional volatility, annualised \label{sigma}}\label{fig:sigma}
+\end{figure}
+
+\subsection{How much of local volatility is
+imported?}\label{how-much-of-local-volatility-is-imported}
+
+The rolling correlation above uses a fixed 52-week window. A DCC-GARCH
+model (Engle, 2002) instead updates the correlations every week from the
+latest shocks. It is fitted to weekly returns of the Capped SWIX, MSCI
+ACWI and MSCI EM: each series has its own GJR-GARCH(1,1) with Student-t
+errors, and a DCC(1,1) process with a multivariate t distribution models
+the correlations of the standardised residuals. Table \ref{tab:dcc}
+shows that the correlation dynamics are significant and persistent (a
+half-life of about 16 weeks), while the asymmetric aDCC finds no
+asymmetry (\(g\) = 0.00, likelihood-ratio p = 1.00): correlations
+respond to the size of joint shocks, crash and rebound alike, rather
+than only to joint falls.
+
+Because the model gives the full conditional covariance matrix \(H_t\),
+the share of local conditional variance explained by the two global
+indexes can be computed every week, as
+\(h_{lg,t}' H_{gg,t}^{-1} h_{lg,t} / h_{ll,t}\) (the R-squared of local
+on global returns, using that week's covariances). Figure \ref{dcc}
+colours local conditional volatility by this imported share. On average
+about half (52\%) of local variance moves with global markets. The share
+reaches two-thirds (65\%) in the COVID crash but falls to 46\% during
+Nenegate, and it rises with the level of volatility: the bigger the
+episode, the more of it is imported. The 2022 oil shock is an exception,
+with only about half of local variance moving with global markets,
+possibly because the resource-heavy local market reacted differently to
+the commodity-price spike.
+
+\begin{table}[H]
+\centering
+\caption{DCC and asymmetric DCC (aDCC) models of weekly Capped SWIX, MSCI ACWI and MSCI EM returns \label{tab:dcc}} 
+\begin{tabular}{lrrrrrrr}
+  \toprule
+Model & a & b & g (asym.) & Half-life (wks) & Log-lik. & AIC & LR p-value \\ 
+  \midrule
+DCC & 0.020 & 0.938 &  & 16.091 & -3441.654 & 11.289 &  \\ 
+  aDCC (asymmetric) & 0.020 & 0.938 & 0.000 & 16.090 & -3441.654 & 11.292 & 1.000 \\ 
+   \bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+
+{\centering \includegraphics[width=1\linewidth]{Question1_files/figure-latex/dcc-1} 
+
+}
+
+\caption{Capped SWIX conditional volatility from the DCC model, coloured by the share of local variance explained by global markets \label{dcc}}\label{fig:dcc}
 \end{figure}
 
 \subsection{What drives local
@@ -488,29 +542,33 @@ to oil prices.
 \end{figure}
 
 Table \ref{tab:reg} formalises this with a regression of standardised
-local volatility on the offshore measures. The VIX and oil volatility
-are the dominant drivers, and the offshore measures alone explain about
-73\% of the monthly variation in local volatility. Adding local currency
-volatility (SAVI) barely changes the fit and is not significant. Global
-EPU enters negatively once the VIX is controlled for, but as the EPU and
-VIX are correlated this coefficient should be read with caution.
+local volatility on the offshore measures. Standard errors are
+Newey-West, because persistent monthly volatility series leave
+autocorrelated residuals. The VIX and oil volatility are the dominant
+and highly significant drivers, and the offshore measures alone explain
+about 73\% of the monthly variation in local volatility. Adding local
+currency volatility (SAVI) barely changes the fit and is not
+significant. Global EPU enters negatively once the VIX is controlled
+for, but it is only borderline significant (p = 0.04) and loses
+significance when SAVI is added; as EPU and the VIX are correlated, this
+coefficient should be read with caution.
 
 \begin{table}[H]
 \centering
-\caption{Standardised regression of Capped SWIX GARCH volatility on uncertainty measures (monthly). R-squared: Offshore only = 0.73; Offshore + SAVI = 0.73 \label{tab:reg}} 
+\caption{Standardised regression of Capped SWIX GARCH volatility on uncertainty measures (monthly, Newey-West standard errors). R-squared: Offshore only = 0.73; Offshore + SAVI = 0.73 \label{tab:reg}} 
 \begin{tabular}{llrrrr}
   \toprule
 Model & Variable & Beta & Std. error & t-stat & p-value \\ 
   \midrule
-Offshore only & VIX & 0.64 & 0.06 & 10.90 & 0.00 \\ 
-  Offshore only & EPU Global & -0.19 & 0.05 & -3.98 & 0.00 \\ 
-  Offshore only & MOVE US bond vol & -0.07 & 0.05 & -1.55 & 0.12 \\ 
-  Offshore only & Oil Vol & 0.37 & 0.05 & 6.84 & 0.00 \\ 
-  Offshore + SAVI & VIX & 0.62 & 0.06 & 10.20 & 0.00 \\ 
-  Offshore + SAVI & EPU Global & -0.16 & 0.05 & -2.99 & 0.00 \\ 
-  Offshore + SAVI & MOVE US bond vol & -0.06 & 0.05 & -1.32 & 0.19 \\ 
-  Offshore + SAVI & Oil Vol & 0.37 & 0.06 & 6.60 & 0.00 \\ 
-  Offshore + SAVI & SAVI USDZAR vol & 0.05 & 0.05 & 0.94 & 0.35 \\ 
+Offshore only & VIX & 0.64 & 0.13 & 4.81 & 0.00 \\ 
+  Offshore only & EPU Global & -0.19 & 0.09 & -2.07 & 0.04 \\ 
+  Offshore only & MOVE US bond vol & -0.07 & 0.09 & -0.84 & 0.41 \\ 
+  Offshore only & Oil Vol & 0.37 & 0.06 & 6.26 & 0.00 \\ 
+  Offshore + SAVI & VIX & 0.62 & 0.13 & 4.72 & 0.00 \\ 
+  Offshore + SAVI & EPU Global & -0.16 & 0.11 & -1.49 & 0.14 \\ 
+  Offshore + SAVI & MOVE US bond vol & -0.06 & 0.09 & -0.73 & 0.47 \\ 
+  Offshore + SAVI & Oil Vol & 0.37 & 0.07 & 5.49 & 0.00 \\ 
+  Offshore + SAVI & SAVI USDZAR vol & 0.05 & 0.06 & 0.87 & 0.38 \\ 
    \bottomrule
 \end{tabular}
 \end{table}
@@ -521,9 +579,10 @@ Local volatility has not risen to a permanently higher level, but
 volatility episodes have become more frequent since 2020, and in 2025-26
 local volatility has tracked emerging markets rather than developed
 markets. These episodes are largely imported: global risk-off shocks and
-oil price volatility explain most of the variation, and they arrive with
-high correlation to global markets and with strong asymmetry (volatility
-rises after losses).
+oil price volatility explain most of the variation, the share of local
+variance that moves with global markets rises from about half in normal
+times to two-thirds in a global crash, and volatility rises far more
+after losses than after gains.
 
 Was the seminar right that oil price volatility and global policy
 uncertainty are spilling into local equities? Partly. Oil volatility
@@ -536,13 +595,13 @@ it holds up in those episodes. That is the lens used to evaluate
 SafeCore in Part B.
 
 Three caveats apply. The regressions capture associations rather than
-causal effects. Because monthly volatility measures are persistent, the
-regression residuals are likely autocorrelated, so the standard errors
-are probably understated: the large t-statistics on the VIX and oil
-volatility remain convincing, but the borderline terms should be read
-with caution. Finally, local volatility is measured in rand and global
-volatility in US dollars, so part of any gap between them reflects
-currency movements rather than the equity markets themselves.
+causal effects. Monthly volatility measures are persistent, which is why
+Newey-West standard errors are used; with about 140 monthly
+observations, the borderline EPU result should still be read with
+caution. Finally, local volatility is measured in rand and global
+volatility in US dollars, so part of any gap between them, and part of
+the imported share from the DCC model, reflects currency movements
+rather than the equity markets themselves.
 
 \section{\texorpdfstring{Part B: Does SafeCore navigate volatility?
 \label{PartB}}{Part B: Does SafeCore navigate volatility? }}\label{part-b-does-safecore-navigate-volatility}
@@ -950,8 +1009,8 @@ increasingly in response to the same risk-on/risk-off swings. Bond and
 currency volatility are what hurt stock pickers. High US bond volatility
 (MOVE) goes with lower dispersion and higher correlation and has the
 strongest negative relationship with the opportunity index; global FX
-and rand volatility show the same pattern. Moreover, these measures are
-more strongly related to \emph{next} month's opportunity than to this
+and rand volatility show the same pattern. These measures are also more
+strongly related to \emph{next} month's opportunity than to this
 month's, so rising rate and currency volatility act as an early warning
 of a more correlated, less rewarding market, as in 2022. Policy
 uncertainty (EPU) again shows little relationship, consistent with Part

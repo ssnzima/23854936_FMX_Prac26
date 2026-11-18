@@ -53,10 +53,11 @@ or optimising portfolios at every rebalance date).
 
 ``` r
 pacman::p_load(tidyverse, lubridate, glue, broom, zoo, tbl2xts, rmsfuns, RcppRoll,  # data handling and returns
-               rugarch,                                                         # GARCH (Q1, Q2)
+               rugarch,                                                         # univariate GARCH (Q1, Q2)
                quadprog, RiskPortfolios, Matrix,                                # optimisation and covariance shrinkage (Q1, Q4)
                FactoMineR, sandwich, lmtest,                                    # PCA and Newey-West tests (Q3)
                ggrepel, cowplot, xtable)                                        # plot labels, plot grids, LaTeX tables
+# rmgarch (multivariate DCC-GARCH, Q1) is called as rmgarch::... rather than loaded, because it masks dplyr's first() and last()
 ```
 
 # Question 1: Exploring Risk and Uncertainty
@@ -75,11 +76,13 @@ evidence is built in layers. Realised volatility comes first, as it is
 model-free and shows how local and global markets have actually moved.
 GARCH models then capture what realised volatility misses: how long
 volatility shocks persist and whether bad news raises volatility more
-than good news. Finally, because the seminar’s claim is about causes,
-local volatility is related to offshore uncertainty measures and to rand
-volatility, to separate imported from home-grown risk. Throughout,
-simple methods backed by robustness checks are preferred, so that each
-conclusion rests on more than one piece of evidence.
+than good news, and a multivariate (DCC) GARCH model measures, week by
+week, how much of local volatility moves with global markets. Finally,
+because the seminar’s claim is about causes, local volatility is related
+to offshore uncertainty measures and to rand volatility, to separate
+imported from home-grown risk. Throughout, simple methods backed by
+robustness checks are preferred, so that each conclusion rests on more
+than one piece of evidence.
 
 ### Data
 
@@ -232,7 +235,7 @@ For each shaded event: how much did rolling vol rise (peak during the
 event + 30 days, minus the level just before it)? If SA-specific events
 lift local vol more than global vol, while global events lift both,
 local vol is a mix of home-grown and imported shocks, and the size of
-each tells us which matters more.
+each shows which matters more.
 
 ``` r
 Event_Rise <- Q1_Events %>%
@@ -353,14 +356,17 @@ negative shock than after a positive one.
 ``` r
 Garch_Out <- Garch_Fit_Sigma(Eq_Returns, Names = c("Capped SWIX", "MSCI ACWI", "MSCI EM"), Model = "gjrGARCH")
 
-Garch_Out$Params %>% knitr::kable(digits = 4)   # persistence close to 1 = long volatility memory
+# Key parameters, with Ljung-Box tests on the standardised residuals: has the model absorbed the clustering?
+Garch_Out$Params %>%
+    left_join(Garch_Diagnostics(Garch_Out$Fits), by = "Name") %>%
+    knitr::kable(digits = 4)   # persistence close to 1 = long volatility memory
 ```
 
-| Name        | alpha1 |  beta1 | gamma1 | Persistence | HalfLife_days |
-|:------------|-------:|-------:|-------:|------------:|--------------:|
-| Capped SWIX | 0.0017 | 0.9033 | 0.1323 |      0.9689 |       21.9696 |
-| MSCI ACWI   | 0.0000 | 0.8651 | 0.2324 |      0.9758 |       28.3162 |
-| MSCI EM     | 0.0134 | 0.8477 | 0.1810 |      0.9491 |       13.2767 |
+| Name | alpha1 | beta1 | gamma1 | Persistence | HalfLife_days | LB p-value (z) | LB p-value (z^2) |
+|:---|---:|---:|---:|---:|---:|---:|---:|
+| Capped SWIX | 0.0017 | 0.9033 | 0.1323 | 0.9689 | 21.9696 | 0.0472 | 0.9868 |
+| MSCI ACWI | 0.0000 | 0.8651 | 0.2324 | 0.9758 | 28.3162 | 0.4465 | 0.7128 |
+| MSCI EM | 0.0134 | 0.8477 | 0.1810 | 0.9491 | 13.2767 | 0.6199 | 0.8006 |
 
 ``` r
 Plot_Garch_Sigma(Garch_Out$Sigma)
@@ -377,10 +383,111 @@ triggered by sell-offs. Second, persistence is high (about 0.97 for the
 Capped SWIX), so a volatility shock has a half-life of about 22 trading
 days (one month). Local shocks fade faster than shocks to MSCI ACWI
 (about 28 days) but slower than shocks to MSCI EM (about 13 days). The
-conditional volatility plot confirms the realised-vol picture: the local
-and global series spike at the same times.
+diagnostics confirm the specification: Ljung-Box tests on the squared
+standardised residuals no longer detect any clustering (p-values of
+0.71-0.99, against test statistics above 1,000 for raw squared returns),
+so the GJR-GARCH has absorbed the volatility dynamics. A little
+first-order autocorrelation remains in the Capped SWIX’s standardised
+residuals (p = 0.05), which does not affect the volatility estimates.
+The conditional volatility plot confirms the realised-vol picture: the
+local and global series spike at the same times.
 
-### 5. What drives local volatility? Offshore uncertainty
+### 5. Conditional correlation (DCC): how much of local volatility is imported?
+
+The rolling correlation in Section 3 uses a fixed 52-week window, so it
+reacts slowly and weights every week in the window equally. A DCC-GARCH
+model (Engle, 2002) instead updates the correlation between markets
+every week from the latest shocks. It is fitted to weekly returns of the
+Capped SWIX, MSCI ACWI and MSCI EM in two steps: each series gets its
+own GJR-GARCH(1,1) with Student-t errors, and a DCC(1,1) process then
+models the correlations of the standardised residuals (with a
+multivariate t distribution). The model is used to answer two questions:
+
+- **Do correlations rise more after joint falls than after joint
+  rallies?** The asymmetric aDCC adds a term ($`g`$) that lets joint
+  negative shocks raise correlations more than joint positive shocks.
+  Comparing it with the standard DCC tests whether diversification fails
+  specifically in sell-offs.
+- **How much of local volatility is imported?** The model gives the full
+  conditional covariance matrix $`H_t`$ every week, so the share of the
+  Capped SWIX’s conditional variance explained by the two global indexes
+  can be tracked over time:
+
+``` math
+\text{Imported share}_t = \frac{h_{lg,t}' \, H_{gg,t}^{-1} \, h_{lg,t}}{h_{ll,t}}
+```
+
+where $`h_{ll,t}`$ is the local conditional variance, $`h_{lg,t}`$ the
+conditional covariances of local with global returns and $`H_{gg,t}`$
+the conditional covariance matrix of the two global indexes. This is the
+R-squared of a regression of local on global returns, computed with that
+week’s covariances.
+
+``` r
+# Weekly returns: the JSE closes before the US opens, so daily co-movement is understated
+DCC_Weekly <- Eq_Returns %>%
+    filter(Name %in% c("Capped SWIX", "MSCI ACWI", "MSCI EM")) %>%
+    mutate(Week = floor_date(date, "week", week_start = 1)) %>%
+    group_by(Name, Week) %>%
+    summarise(R = prod(1 + Returns) - 1, .groups = "drop") %>%
+    pivot_wider(names_from = Name, values_from = R) %>%
+    drop_na() %>%
+    select(Week, `Capped SWIX`, `MSCI ACWI`, `MSCI EM`)
+DCC_xts <- xts::xts(as.matrix(DCC_Weekly[, -1]) * 100, order.by = DCC_Weekly$Week)   # % returns help the optimiser
+
+# Step 1: GJR-GARCH(1,1) with Student-t errors for each series; step 2: DCC(1,1) on the standardised residuals
+uspec <- ugarchspec(variance.model = list(model = "gjrGARCH", garchOrder = c(1, 1)),
+                    mean.model = list(armaOrder = c(0, 0), include.mean = TRUE), distribution.model = "std")
+Fit_DCC  <- rmgarch::dccfit(rmgarch::dccspec(multispec(replicate(3, uspec)), dccOrder = c(1, 1), model = "DCC",  distribution = "mvt"),
+                            data = DCC_xts, solver = "solnp")
+Fit_aDCC <- rmgarch::dccfit(rmgarch::dccspec(multispec(replicate(3, uspec)), dccOrder = c(1, 1), model = "aDCC", distribution = "mvt"),
+                            data = DCC_xts, solver = "solnp")
+
+# DCC vs asymmetric DCC: parameters, fit and a likelihood-ratio test
+Q1A_DCC_Table(Fit_DCC, Fit_aDCC) %>% knitr::kable(digits = 4)
+```
+
+| Model | a (shock) | b (memory) | g (asymmetry) | Half-life (weeks) | Log-likelihood | AIC | LR test p-value |
+|:---|---:|---:|---:|---:|---:|---:|---:|
+| DCC | 0.0197 | 0.9382 |  | 16.0913 | -3441.654 | 11.2888 |  |
+| aDCC (asymmetric) | 0.0197 | 0.9382 | 0 | 16.0903 | -3441.654 | 11.2920 | 1 |
+
+``` r
+# Imported share of local variance each week, from the conditional covariance matrix H_t
+H <- rmgarch::rcov(Fit_DCC)
+Imported <- tibble(date     = DCC_Weekly$Week,
+                   LocalVol = sqrt(H[1, 1, ] * 52) / 100,
+                   Share    = map_dbl(seq_len(dim(H)[3]), function(t) {
+                       h <- H[1, 2:3, t]
+                       as.numeric(t(h) %*% solve(H[2:3, 2:3, t]) %*% h) / H[1, 1, t]
+                   }))
+
+Plot_DCC_Imported(Imported)
+```
+
+![](README_files/figure-gfm/Q1A-dcc-1.png)<!-- -->
+
+**Interpretation:** The correlation dynamics are significant and
+persistent ($`a`$ = 0.02, $`b`$ = 0.94): a shock to the local-global
+correlation fades with a half-life of about 16 weeks. The asymmetry term
+is zero ($`g`$ = 0.00, likelihood-ratio test p = 1.00), and the AIC
+prefers the simpler DCC. Correlations therefore respond to the *size* of
+joint shocks rather than their sign: the jump in correlation during the
+COVID crash (Section 3) came from large joint moves in both directions,
+the crash and the rebound. On average about half (52%) of the Capped
+SWIX’s conditional variance is explained by global markets, and the rest
+is home-grown (local politics, the rand and the market’s own sector
+mix). The imported share is highest in global crashes, reaching
+two-thirds (65%) during COVID, against only 46% during Nenegate, the
+most purely local shock. It also rises with the level of volatility (54%
+in the most volatile fifth of weeks against 50% in the calmest), so the
+bigger the volatility episode, the more of it is imported. The 2022 oil
+shock is an exception: although global, only about half (49%) of local
+variance moved with global markets, possibly because the resource-heavy
+local market reacted differently to the commodity-price spike than
+global markets did.
+
+### 6. What drives local volatility? Offshore uncertainty
 
 Monthly panel of local and global GARCH vol, implied vol (VIX, V2X,
 VXEEM), policy uncertainty (EPU), US bond vol (MOVE), Brent oil realised
@@ -427,7 +534,7 @@ standard deviation rise in local vol”. Model 2 adds local currency vol
 drivers.
 
 ``` r
-# Standardise every series and give the columns lm-friendly names
+# Standardise every series 
 Z <- Monthly_Panel %>%
     mutate(across(-date, ~ as.numeric(scale(.x)))) %>%
     rename_with(make.names)
@@ -435,38 +542,45 @@ Z <- Monthly_Panel %>%
 Reg_Offshore <- lm(Capped.SWIX.Vol ~ VIX + EPU.Global + MOVE..US.bond.vol. + Oil.Vol, data = Z)
 Reg_With_SAVI <- update(Reg_Offshore, . ~ . + SAVI.USDZAR.vol)
 
-bind_rows(tidy(Reg_Offshore) %>% mutate(Model = "Offshore only", R2 = summary(Reg_Offshore)$r.squared),
-          tidy(Reg_With_SAVI) %>% mutate(Model = "Offshore + SAVI", R2 = summary(Reg_With_SAVI)$r.squared)) %>%
+# Newey-West (HAC) standard errors: monthly volatility is persistent, so the residuals are autocorrelated
+NW <- function(m) tidy(lmtest::coeftest(m, vcov. = sandwich::NeweyWest(m)))
+
+bind_rows(NW(Reg_Offshore) %>% mutate(Model = "Offshore only", R2 = summary(Reg_Offshore)$r.squared),
+          NW(Reg_With_SAVI) %>% mutate(Model = "Offshore + SAVI", R2 = summary(Reg_With_SAVI)$r.squared)) %>%
     filter(term != "(Intercept)") %>%
     mutate(term = recode(term, "EPU.Global" = "EPU Global", "MOVE..US.bond.vol." = "MOVE (US bond vol)",
                          "Oil.Vol" = "Oil vol", "SAVI.USDZAR.vol" = "SAVI (USDZAR vol)")) %>%
-    select(Model, Variable = term, Beta = estimate, SE = std.error, t = statistic, p = p.value, R2) %>%
+    select(Model, Variable = term, Beta = estimate, `NW SE` = std.error, t = statistic, p = p.value, R2) %>%
     knitr::kable(digits = 3)
 ```
 
-| Model           | Variable           |   Beta |    SE |      t |     p |    R2 |
+| Model           | Variable           |   Beta | NW SE |      t |     p |    R2 |
 |:----------------|:-------------------|-------:|------:|-------:|------:|------:|
-| Offshore only   | VIX                |  0.637 | 0.058 | 10.902 | 0.000 | 0.728 |
-| Offshore only   | EPU Global         | -0.189 | 0.048 | -3.980 | 0.000 | 0.728 |
-| Offshore only   | MOVE (US bond vol) | -0.072 | 0.046 | -1.548 | 0.124 | 0.728 |
-| Offshore only   | Oil vol            |  0.374 | 0.055 |  6.837 | 0.000 | 0.728 |
-| Offshore + SAVI | VIX                |  0.621 | 0.061 | 10.202 | 0.000 | 0.730 |
-| Offshore + SAVI | EPU Global         | -0.164 | 0.055 | -2.991 | 0.003 | 0.730 |
-| Offshore + SAVI | MOVE (US bond vol) | -0.062 | 0.047 | -1.321 | 0.189 | 0.730 |
-| Offshore + SAVI | Oil vol            |  0.365 | 0.055 |  6.604 | 0.000 | 0.730 |
-| Offshore + SAVI | SAVI (USDZAR vol)  |  0.051 | 0.054 |  0.943 | 0.347 | 0.730 |
+| Offshore only   | VIX                |  0.637 | 0.132 |  4.812 | 0.000 | 0.728 |
+| Offshore only   | EPU Global         | -0.189 | 0.091 | -2.068 | 0.041 | 0.728 |
+| Offshore only   | MOVE (US bond vol) | -0.072 | 0.086 | -0.835 | 0.405 | 0.728 |
+| Offshore only   | Oil vol            |  0.374 | 0.060 |  6.256 | 0.000 | 0.728 |
+| Offshore + SAVI | VIX                |  0.621 | 0.131 |  4.721 | 0.000 | 0.730 |
+| Offshore + SAVI | EPU Global         | -0.164 | 0.110 | -1.486 | 0.140 | 0.730 |
+| Offshore + SAVI | MOVE (US bond vol) | -0.062 | 0.086 | -0.729 | 0.467 | 0.730 |
+| Offshore + SAVI | Oil vol            |  0.365 | 0.067 |  5.486 | 0.000 | 0.730 |
+| Offshore + SAVI | SAVI (USDZAR vol)  |  0.051 | 0.059 |  0.872 | 0.385 | 0.730 |
 
 **Interpretation:** The offshore measures alone explain about 73% of the
 monthly variation in local volatility. The VIX is the dominant driver (a
 1 sd rise goes with a 0.64 sd rise in local vol), followed by oil
-volatility (0.37 sd), and both are highly significant. MOVE is not
-significant once the VIX is included. Global EPU enters with a negative
-sign, but because EPU and the VIX are correlated, this coefficient picks
-up the part of EPU that is not already reflected in market fear, and
-should not be read as “uncertainty lowers volatility”. Adding local
-currency volatility (SAVI) barely changes the fit (R² from 0.728 to
-0.730) and is insignificant: once global fear and oil are accounted for,
-the rand adds no extra information about equity volatility.
+volatility (0.37 sd), and both remain highly significant with Newey-West
+standard errors, which allow for the autocorrelation in persistent
+monthly volatility series. MOVE is not significant once the VIX is
+included. Global EPU enters with a negative sign but is only borderline
+significant once autocorrelation is allowed for (p = 0.04), and loses
+significance when SAVI is added (p = 0.14). Because EPU and the VIX are
+correlated, this coefficient picks up the part of EPU that is not
+already reflected in market fear, and should not be read as “uncertainty
+lowers volatility”. Adding local currency volatility (SAVI) barely
+changes the fit (R² from 0.728 to 0.730) and is insignificant: once
+global fear and oil are accounted for, the rand adds no extra
+information about equity volatility.
 
 ### Part A conclusion
 
@@ -474,25 +588,26 @@ Local volatility has not moved to a permanently higher level since 2020,
 but volatility episodes have become more frequent, and in 2025-26 local
 volatility has tracked emerging markets rather than developed markets.
 Most of these episodes are imported: global risk-off shocks and oil
-volatility explain the bulk of the variation in local volatility, they
-coincide with near-perfect correlation between local and global markets,
-and volatility rises far more after losses than after gains. On the
-seminar’s claim that oil price volatility and global policy uncertainty
-are spilling into local equities, the evidence is mixed: oil volatility
-clearly feeds through, but policy uncertainty only seems to matter once
-it turns into global market fear (a higher VIX). For a local equity
-fund, the practical takeaway is that the risk worth protecting against
-is a global sell-off rather than a rand shock, which is the lens used to
-evaluate SafeCore in Part B.
+volatility explain the bulk of the variation in local volatility, the
+share of local variance that moves with global markets rises from about
+half in normal times to two-thirds in a global crash, and volatility
+rises far more after losses than after gains. On the seminar’s claim
+that oil price volatility and global policy uncertainty are spilling
+into local equities, the evidence is mixed: oil volatility clearly feeds
+through, but policy uncertainty only seems to matter once it turns into
+global market fear (a higher VIX). For a local equity fund, the
+practical takeaway is that the risk worth protecting against is a global
+sell-off rather than a rand shock, which is the lens used to evaluate
+SafeCore in Part B.
 
 **Limitations.** The regressions show associations, not causal effects.
-Monthly volatility measures are persistent, so the residuals are likely
-autocorrelated and the OLS standard errors understated; the strong
-t-statistics on the VIX and oil remain convincing, but the borderline
-terms (EPU, MOVE) should be read with caution. Finally, local volatility
-is measured in rand and global volatility in US dollars, so part of any
-gap between them reflects the currency rather than the equity market
-itself.
+Monthly volatility measures are persistent, which is why Newey-West
+standard errors are used; even so, with about 140 monthly observations
+the borderline EPU result should be read with caution. Finally, local
+volatility is measured in rand and global volatility in US dollars, so
+part of any gap between them, and part of the imported share from the
+DCC model, reflects how the rand moves rather than the equity markets
+themselves.
 
 ## Part B: Does SafeCore navigate volatility effectively?
 
@@ -621,10 +736,10 @@ bind_rows(
 
 | Period | Fund | Ann. return | Ann. vol | Sharpe | Max drawdown | Beta | Tracking error | Info. ratio |
 |:---|:---|---:|---:|---:|---:|---:|---:|---:|
-| 2015-2026 | Capped SWIX | 0.087 | 0.178 | 0.102 | -0.417 | 1.000 | 0.000 | NA |
+| 2015-2026 | Capped SWIX | 0.087 | 0.178 | 0.102 | -0.417 | 1.000 | 0.000 |  |
 | 2015-2026 | SafeCore | 0.114 | 0.179 | 0.255 | -0.391 | 0.953 | 0.056 | 0.486 |
 | 2015-2026 | Top 40 | 0.110 | 0.187 | 0.225 | -0.346 | 0.988 | 0.064 | 0.376 |
-| Sep 2020-2026 | Capped SWIX | 0.162 | 0.164 | 0.589 | -0.141 | 1.000 | 0.000 | NA |
+| Sep 2020-2026 | Capped SWIX | 0.162 | 0.164 | 0.589 | -0.141 | 1.000 | 0.000 |  |
 | Sep 2020-2026 | Low Vol | 0.124 | 0.151 | 0.388 | -0.147 | 0.876 | 0.051 | -0.740 |
 | Sep 2020-2026 | SafeCore | 0.176 | 0.169 | 0.655 | -0.185 | 1.003 | 0.039 | 0.357 |
 | Sep 2020-2026 | Top 40 | 0.161 | 0.181 | 0.528 | -0.172 | 1.062 | 0.049 | -0.026 |
@@ -1721,7 +1836,7 @@ building them. The scree plot and the variable correlation circle
 summarise the result.
 
 ``` r
-Q3_PCA_F <- Q3_PCA_Prac(Q3_Funds_M, Months = 60)
+Q3_PCA_F <- Q3_PCA_FactoMineR(Q3_Funds_M, Months = 60)
 # Eigenvalues and % of variance for the first five dimensions, with ABC's correlation with each
 # (ABC is a supplementary variable: it plays no part in building the dimensions)
 tibble(Dimension         = paste("Dim", 1:5),
@@ -1740,10 +1855,10 @@ tibble(Dimension         = paste("Dim", 1:5),
 | Dim 5     |       1.34 |          1.13 |           -0.16 |
 
 ``` r
-Plot_Q3_PCA_Prac(Q3_PCA_F)
+Plot_Q3_PCA_Circle(Q3_PCA_F)
 ```
 
-![](README_files/figure-gfm/Q3-pca-prac-1.png)<!-- -->
+![](README_files/figure-gfm/Q3-pca-circle-1.png)<!-- -->
 
 **Interpretation:** The scree plot drops sharply after the first
 component (82.4%), with no other component explaining more than 3.5%, so
